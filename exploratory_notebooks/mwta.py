@@ -11,15 +11,15 @@ post_init_cfg(buffer_config)
 
 # %%
 d_model = model.cfg.d_model
-features = 4000
+features = 20_000
 prec = 1e-10
 
 n_winners = 20
 
-epoch_num_batches = 100
+epoch_num_batches = 1000
 num_epochs = 1
 
-lr = 0.0001
+lr = 0.001
 hyp_min = 0.001
 
 # %%
@@ -35,21 +35,28 @@ def hyperbola(x, a):
 buffer = Buffer(buffer_config)
 
 # %%
-data = buffer.next()
+all_data = []
 
-w = data[:features, :d_model]
+for i in range(13):
+    all_data.append(buffer.next())
+
+# data = buffer.next()
+# data1 = buffer.next()
+# data2 = buffer.next()
+
+w = t.cat(all_data, dim=0)[:features, :d_model]
+
 
 # w = 2 * t.rand(features, d_model, device=cfg["device"]) - 1
 # w = w.to(t.bfloat16)
 
 w = w / w.norm(dim=-1, keepdim=True)
 
-
 # %%
-
-
 i = 0
 single = False
+iter_spec = 6
+
 for ep in range(num_epochs):
     error = 0
 
@@ -60,6 +67,15 @@ for ep in range(num_epochs):
 
         if not single:
             data_sign = t.sign(data)
+
+            if batch < 40:
+                lr = 0.01
+            else:
+                lr = 0.001
+            # elif batch < 80:
+            #     lr = 0.1
+            # else:
+            #     lr = 0.001
 
             N, _ = data.shape
 
@@ -91,9 +107,9 @@ for ep in range(num_epochs):
                     # * data_sign[indices, :].unsqueeze(-2)
                 ).sum(dim=0) * lr
 
-            if (batch % 10) == 0:
+            if (batch % iter_spec) == 0:
                 print(
-                    f"Batch: {batch}, Error: {error / (10 * N)}, Num Winners: {(winner_count > 0).sum().item()}"
+                    f"Batch: {batch}, Error: {error / (iter_spec * N)}, Num Winners: {(winner_count > 0).sum().item()} Avg Winners: {winner_count.mean().item()} Above Average {((winner_count > winner_count.mean()).sum().item())}"
                 )
 
                 winner_count = t.zeros(features, device=cfg["device"])
@@ -130,6 +146,7 @@ for ep in range(num_epochs):
 
             print("Error", error / 4096)
             error = 0
+    break
 
 
 # %%
@@ -206,9 +223,10 @@ winner_count.std()
 winner_count.argmax()
 
 # %%
-big_winner = w[1896]
+big_winner = w[winner_count.argmax().item()]
 
 # %%
+
 
 (big_winner.abs() > 0.01).sum()
 

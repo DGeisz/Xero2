@@ -5,7 +5,7 @@ import time
 
 # %%
 buffer_config = default_cfg
-buffer_config["batch_size"] = 4096
+buffer_config["batch_size"] = 2 * 4096
 
 post_init_cfg(buffer_config)
 
@@ -14,7 +14,7 @@ batch_size = buffer_config["batch_size"]
 
 # %%
 d_model = model.cfg.d_model
-features = 80_000
+features = 4_000
 prec = 1e-10
 
 n_winners = 20
@@ -58,21 +58,17 @@ w = w / w.norm(dim=-1, keepdim=True)
 
 print("w.shape:", w.shape)
 
-# %%
-features = 50_000
-w = w[:features, :]
-
 
 # %%
 i = 0
 single = False
-iter_spec = 2
+iter_spec = 10
 
-train_chump = 100
+train_chump = 10
 
-update_dead_neurons_freq = 10
-dead_update = 0.2
-wait_dead_update = 20
+update_dead_neurons_freq = 40
+dead_update = 1
+wait_dead_update = 30
 
 
 start = time.time()
@@ -89,10 +85,11 @@ for ep in range(num_epochs):
         if not single:
             data_sign = t.sign(data)
 
-            if batch < train_chump:
-                lr = 0.02
-            else:
-                lr = 0.001
+            lr = 0.002
+            # if batch < train_chump:
+            #     lr = 0.02
+            # else:
+            #     lr = 0.001
             # elif batch < 80:
             #     lr = 0.1
             # else:
@@ -108,7 +105,7 @@ for ep in range(num_epochs):
             mask[rows, winners] = 1
 
             winner_count += mask.sum(dim=0)
-            # serious_winner_count += mask.sum(dim=0)
+            serious_winner_count += mask.sum(dim=0)
 
             o = mask * p
             mo = o.max(dim=-1).values.unsqueeze(1)
@@ -137,19 +134,19 @@ for ep in range(num_epochs):
                 winner_count = t.zeros(features, device=cfg["device"])
                 error = 0
 
-            # if (batch % update_dead_neurons_freq) == 0 and batch > wait_dead_update:
-            #     dead_i = t.where(serious_winner_count == 0)[0]
-            #     big_winner = w[winner_count.argmax().item()]
+            if (batch % update_dead_neurons_freq) == 0 and batch > wait_dead_update:
+                dead_i = t.where(serious_winner_count == 0)[0]
+                big_winner = w[winner_count.argmax().item()]
 
-            #     dead_spots = t.zeros(features).to(device)
-            #     dead_spots[dead_i] = 1
+                dead_spots = t.zeros(features).to(device)
+                dead_spots[dead_i] = 1
 
-            #     update = einops.einsum(dead_spots, big_winner, "f, d -> f d")
-            #     w += update * dead_update
+                update = einops.einsum(dead_spots, big_winner, "f, d -> f d")
+                w += update * dead_update
 
-            #     print(f'Updated {dead_i.shape[0]} dead neurons')
+                print(f"Updated {dead_i.shape[0]} dead neurons")
 
-            #     serious_winner_count = t.zeros(features, device=cfg["device"])
+                serious_winner_count = t.zeros(features, device=cfg["device"])
         else:
             N, _ = data.shape
             error = 0

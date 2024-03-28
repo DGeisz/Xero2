@@ -1,6 +1,7 @@
 # %%
 from setup import *
 from generate_activations import Buffer, model, cfg, default_cfg, post_init_cfg
+import time
 
 # %%
 buffer_config = default_cfg
@@ -8,10 +9,12 @@ buffer_config["batch_size"] = 4096
 
 post_init_cfg(buffer_config)
 
+batch_size = buffer_config["batch_size"]
+
 
 # %%
 d_model = model.cfg.d_model
-features = 20_000
+features = 80_000
 prec = 1e-10
 
 n_winners = 20
@@ -37,7 +40,7 @@ buffer = Buffer(buffer_config)
 # %%
 all_data = []
 
-for i in range(13):
+for i in range((features // batch_size) + 1):
     all_data.append(buffer.next())
 
 # data = buffer.next()
@@ -52,10 +55,27 @@ w = t.cat(all_data, dim=0)[:features, :d_model]
 
 w = w / w.norm(dim=-1, keepdim=True)
 
+
+print("w.shape:", w.shape)
+
+# %%
+features = 50_000
+w = w[:features, :]
+
+
 # %%
 i = 0
 single = False
-iter_spec = 6
+iter_spec = 2
+
+train_chump = 100
+
+update_dead_neurons_freq = 10
+dead_update = 0.2
+wait_dead_update = 20
+
+
+start = time.time()
 
 for ep in range(num_epochs):
     error = 0
@@ -64,12 +84,13 @@ for ep in range(num_epochs):
         data = buffer.next()
 
         winner_count = t.zeros(features, device=cfg["device"])
+        serious_winner_count = t.zeros(features, device=cfg["device"])
 
         if not single:
             data_sign = t.sign(data)
 
-            if batch < 40:
-                lr = 0.01
+            if batch < train_chump:
+                lr = 0.02
             else:
                 lr = 0.001
             # elif batch < 80:
@@ -87,6 +108,7 @@ for ep in range(num_epochs):
             mask[rows, winners] = 1
 
             winner_count += mask.sum(dim=0)
+            # serious_winner_count += mask.sum(dim=0)
 
             o = mask * p
             mo = o.max(dim=-1).values.unsqueeze(1)
@@ -109,11 +131,25 @@ for ep in range(num_epochs):
 
             if (batch % iter_spec) == 0:
                 print(
-                    f"Batch: {batch}, Error: {error / (iter_spec * N)}, Num Winners: {(winner_count > 0).sum().item()} Avg Winners: {winner_count.mean().item()} Above Average {((winner_count > winner_count.mean()).sum().item())}"
+                    f"Time: {time.time() - start:.2f}, Batch: {batch}, Error: {error / (iter_spec * N)}, Num Winners: {(winner_count > 0).sum().item()} Avg Winners: {winner_count.mean().item()} Above Average {((winner_count > winner_count.mean()).sum().item())}"
                 )
 
                 winner_count = t.zeros(features, device=cfg["device"])
                 error = 0
+
+            # if (batch % update_dead_neurons_freq) == 0 and batch > wait_dead_update:
+            #     dead_i = t.where(serious_winner_count == 0)[0]
+            #     big_winner = w[winner_count.argmax().item()]
+
+            #     dead_spots = t.zeros(features).to(device)
+            #     dead_spots[dead_i] = 1
+
+            #     update = einops.einsum(dead_spots, big_winner, "f, d -> f d")
+            #     w += update * dead_update
+
+            #     print(f'Updated {dead_i.shape[0]} dead neurons')
+
+            #     serious_winner_count = t.zeros(features, device=cfg["device"])
         else:
             N, _ = data.shape
             error = 0
@@ -220,14 +256,58 @@ def generate_update(data, w, n_winners=n_winners, hyp_min=hyp_min, prec=prec):
 winner_count.std()
 
 # %%
+dead_i = t.where(winner_count == 0)[0]
+
+# %%
+big_winner = w[winner_count.argmax().item()]
+
+# %%
+dead_spots = t.zeros(features).to(device)
+dead_spots[dead_i] = 1
+
+# %%
+update = einops.einsum(dead_spots, big_winner, "f, d -> f d")
+
+# %%
+update[:5]
+
+
+# %%
 winner_count.argmax()
 
 # %%
 big_winner = w[winner_count.argmax().item()]
 
 # %%
+ordered = t.argsort(winner_count, descending=True)
+
+# %%
+li = ordered[-2]
+
+big_loser = w[li].clone()
+
+print(
+    "above 0: ",
+    (big_loser.abs() > 0.01).sum().item(),
+    "Winner Count",
+    winner_count[li].item(),
+)
+
+# %%
+big_loser[big_loser.abs() < 0.01] = 0
+big_loser
 
 
+# %%
+(big_winner.abs() > 0.01).sum()
+
+
+# %%
+(winner_count == 0).sum()
+# %%
+big_winner
+
+# %%
 (big_winner.abs() > 0.01).sum()
 
 # %%
@@ -235,6 +315,9 @@ bw = big_winner.clone()
 
 # %%
 bw[bw.abs() < 0.01] = 0
+bw
+# %%
+
 
 # %%
 (bw < 0).sum()

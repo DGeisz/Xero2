@@ -88,10 +88,6 @@ def get_acts(tokens, batch_size=1024):
 
 
 # %%
-act1 = get_acts(model.to_tokens("Hello"))[0]
-
-
-# %%
 def shuffle_data(all_tokens):
     print("Shuffled data")
     return all_tokens[torch.randperm(all_tokens.shape[0])]
@@ -117,7 +113,6 @@ if loading_data_first_time:
     ]
     torch.save(all_tokens_reshaped, "/workspace/data/c4_code_2b_tokens_reshaped.pt")
 else:
-    # data = datasets.load_from_disk("/workspace/data/c4_code_tokenized_2b.hf")
     print("Loading tokens from disk")
     all_tokens = torch.load("/workspace/data/c4_code_2b_tokens_reshaped.pt")
     all_tokens = shuffle_data(all_tokens)

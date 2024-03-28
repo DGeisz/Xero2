@@ -5,7 +5,7 @@ import time
 
 # %%
 buffer_config = default_cfg
-buffer_config["batch_size"] = 2 * 4096
+buffer_config["batch_size"] = 4096
 
 post_init_cfg(buffer_config)
 
@@ -38,20 +38,17 @@ def hyperbola(x, a):
 buffer = Buffer(buffer_config)
 
 # %%
+buffer.next().shape
+
+
+# %%
 all_data = []
 
 for i in range((features // batch_size) + 1):
     all_data.append(buffer.next())
 
-# data = buffer.next()
-# data1 = buffer.next()
-# data2 = buffer.next()
-
 w = t.cat(all_data, dim=0)[:features, :d_model]
 
-
-# w = 2 * t.rand(features, d_model, device=cfg["device"]) - 1
-# w = w.to(t.bfloat16)
 
 w = w / w.norm(dim=-1, keepdim=True)
 
@@ -64,11 +61,11 @@ i = 0
 single = False
 iter_spec = 10
 
-train_chump = 10
+train_chump = 40
 
 update_dead_neurons_freq = 40
 dead_update = 1
-wait_dead_update = 30
+wait_dead_update = 3000
 
 
 start = time.time()
@@ -85,11 +82,11 @@ for ep in range(num_epochs):
         if not single:
             data_sign = t.sign(data)
 
-            lr = 0.002
-            # if batch < train_chump:
-            #     lr = 0.02
-            # else:
-            #     lr = 0.001
+            # lr = 0.005
+            if batch < train_chump:
+                lr = 0.002
+            else:
+                lr = 0.01
             # elif batch < 80:
             #     lr = 0.1
             # else:
@@ -98,7 +95,7 @@ for ep in range(num_epochs):
             N, _ = data.shape
 
             p = einops.einsum(data, w, "n d, f d -> n f")
-            winners = t.argsort(p, descending=True, axis=-1)[:, :n_winners]
+            winners = t.argsort(input=p, descending=True, dim=-1)[:, :n_winners]
 
             mask = t.zeros_like(p)
             rows = t.arange(winners.size(0)).unsqueeze(1).expand_as(winners)
@@ -187,11 +184,13 @@ print(
     "winner count",
     winner_count.mean().item(),
     winner_count.std().item(),
-    (winner_count > 0).sum(),
+    (winner_count > 0).sum().item(),
+    (winner_count == 1).sum().item(),
 )
 
+
 # %%
-winner_count.max()
+winner_count.max().item()
 
 
 # %%
@@ -341,6 +340,10 @@ u, o, e, r, winners, mod_r = generate_update(data, w, n_winners)
 # %%
 win = winners[0].item()
 win
+
+# %%
+win
+
 
 # %%
 mod_r
@@ -496,5 +499,102 @@ o
 
 # %%
 mo
+
+# %%
+
+aw = w.clone()
+aw = aw / aw.norm(dim=-1, keepdim=True)
+
+# %%
+aw.shape
+
+# %%
+a_count = winner_count.clone()
+
+# %%
+big_winner = aw[winner_count.argmax().item()]
+
+# %%
+dots = einops.einsum(aw, big_winner, "f d, d -> f")
+
+
+# %%
+dots.sort(descending=True)[0].tolist()
+
+
+# %%
+# Sort in descending order
+aw[dots.sort(descending=True)[1][:20]][:10, :8]
+
+# %%
+
+
+# %%
+a_count.argmax()
+
+# %%
+(big_winner > 0.05).sum()
+
+
+# %%
+big_winner.max()
+
+# %%
+(aw.abs() > 0.05).sum(dim=-1).float().mean()
+
+
+# %%
+winner_count.sort()[0][-20:]
+
+# %%
+winner_count.sort().values[-500:]
+
+# %%
+winner_count.sort().indices[-10:]
+
+
+# %%
+aw[407] @ aw[469]
+
+# %%
+print(aw[407] - aw[469])
+
+a = aw[407]
+b = aw[469]
+
+
+# %%
+v = 0.05
+
+print(
+    (a.abs() > v).sum().item(),
+    (b.abs() > v).sum().item(),
+    ((a - b).abs() > v).sum().item(),
+)
+
+# %%
+512**0.5
+
+# %%
+v = 0.05
+vec = avg
+
+print("Above:", (vec > v).sum().item(), "Below:", (vec < -v).sum().item())
+
+# %%
+data = buffer.next()
+
+# %%
+data.shape
+
+# %%
+avg = data.mean(dim=0)
+
+# %%
+avg
+
+
+# %%
+avg.std()
 
 # %%

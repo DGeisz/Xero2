@@ -92,6 +92,21 @@ class KWinnerSynthesis:
 
         self.features = features
 
+    def get_winners(self, data, n_winners=None):
+        if n_winners is None:
+            n_winners = self.config.n_winners
+
+        data = data / data.norm(dim=-1).unsqueeze(-1)
+
+        raw_output = einops.einsum(data, self.features, "n d, f d -> n f")
+
+        values, indices = t.sort(raw_output, descending=True, dim=-1)
+
+        return (
+            indices[:, :n_winners],
+            values[:, :n_winners],
+        )
+
     def run_and_reconstruct_single_batch(self) -> KWSSingleBatchOutput:
         data = self.random_data_batch()
 

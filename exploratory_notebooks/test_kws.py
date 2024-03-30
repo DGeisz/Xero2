@@ -18,20 +18,28 @@ from setup import *
 # %%
 simple_config = KWSConfig(
     num_features=4_000,
-    n_winners=20,
+    n_winners=5,
     num_batches=100,
-    lr=0.001,
-    lr_schedule=[(20, 0.001), (100, 0.005)],
+    lr=0.005,
+    log_freq=5,
+    update_dead_neurons_freq=None,
+    dead_neuron_resample_fraction=0.1,
+    dead_neuron_resample_initial_delay=50,
+    lr_schedule=[(20, 0.005), (100, 0.01)],
 )
 
-# %%
 kws = KWinnerSynthesis(config=simple_config, buffer_config=buffer_config)
 
-# %%
-kws.train()
+kws.train(1000)
 
 # %%
-kws.features
+kws.config.log_freq = 20
+
+kws.train(1000)
+
+
+# %%
+
 
 # %%
 model_batch_size = 32
@@ -51,18 +59,20 @@ acts = cache[cfg["act_name"]]
 
 # %%
 data = einops.rearrange(acts, "n s d -> (n s) d").to(torch.bfloat16)
-winners = einops.rearrange(
-    kws.get_winners(data), "(n s) w -> n s w", n=model_batch_size
-)
+# winners = einops.rearrange(
+#     kws.get_winners(data), "(n s) w -> n s w", n=model_batch_size
+# )
+
+# %%
+a, v = kws.get_winners(data)
+
 
 # %%
 
-
-# %%
 
 start = time.time()
 
-model_batch_size = 32 * 2 * 2 * 2 * 2
+model_batch_size = 32 * 2 * 2 * 2
 
 
 num_seqs = model_batch_size
@@ -84,7 +94,7 @@ for indices in torch.split(t.arange(num_seqs), model_batch_size):
 
     data = einops.rearrange(acts, "n s d -> (n s) d").to(torch.bfloat16)
 
-    winner_indices, winner_values = kws.get_winners(data, n_winners=1)
+    winner_indices, winner_values = kws.get_winners(data, n_winners=5)
 
     winner_indices = einops.rearrange(
         winner_indices, "(n s) w -> n s w", n=model_batch_size
@@ -116,55 +126,102 @@ sum(winner_i[i].shape[0] for i in range(kws.config.num_features))
 
 
 # %%
-seq_dict = {}
-i = 910
+def run_for_feature(i, start, q):
+    seq_dict = {}
 
-feature_winners = winner_i[i]
+    feature_winners = winner_i[i]
 
-for i, k, l in feature_winners.tolist():
-    if i in seq_dict:
-        seq_dict[i].append((k, l))
-    else:
-        seq_dict[i] = [(k, l)]
+    for i, k, l in feature_winners.tolist():
+        if i in seq_dict:
+            seq_dict[i].append((k, l))
+        else:
+            seq_dict[i] = [(k, l)]
 
 
-_, indices = torch.sort(feature_winners[:, 2], descending=True)
-sorted_winners = feature_winners[indices]
+    _, indices = torch.sort(feature_winners[:, 2], descending=True)
+    sorted_winners = feature_winners[indices]
 
-all_max = []
-display_max = 20
+    all_max = []
+    display_max = 20
 
-for i, _, _ in sorted_winners:
-    index = int(i)
+    for i, _, _ in sorted_winners:
+        index = int(i)
 
-    if index not in all_max:
-        all_max.append(index)
+        if index not in all_max:
+            all_max.append(index)
 
-    if len(all_max) >= display_max:
-        break
+        if len(all_max) >= display_max:
+            break
 
-print(all_max)
+    print(all_max)
 
-start = 4
-q = 4
+    for seq_i in all_max[start:start+q]:
+        # seq_i = int(list(seq_dict.keys())[key_i])
+        tt = model.to_str_tokens(all_tokens[seq_i])
 
-for seq_i in all_max[start:start+q]:
-    # seq_i = int(list(seq_dict.keys())[key_i])
-    tt = model.to_str_tokens(all_tokens[seq_i])
+        v = [0.0 for _ in range(128)]
 
-    v = [0.0 for _ in range(128)]
+        seq = seq_dict[seq_i]
 
-    for i, k in seq_dict[seq_i]:
-        v[int(i)] = k
+        for i, k in seq:
+            v[int(i)] = k
 
-    display(cv.tokens.colored_tokens(tokens=tt, values=v, min_value=0.1, max_value=.25))
+        indices = [i for i, _ in seq]
 
+        padding = 10
+
+        start = max(int(min(indices)) - padding, 0)
+        end = int(max(indices)) + padding
+        
+        tokens = tt[start:end]
+        values = v[start:end]
+
+        # tokens = tt
+        # values = v
+
+        tokens.extend(["\n      ", ' '])
+        values.extend([0, 0])
+
+        
+        display(cv.tokens.colored_tokens(tokens=tokens, values=values, min_value=0.1, max_value=1))
+
+
+def most_similar(i):
+    dots = einops.einsum(kws.features[i], kws.features, "d, f d -> f")
+    return dots.sort(descending=True).indices[:10].tolist()
+
+
+
+# %%
+run_for_feature(1, 10, 10)
+
+# %%
+most_similar(3000)
 
 # %%
 winner_count = kws.get_winner_count_from_n_batches(10)
 
 # %%
 winner_count.argmax()
+# %%
+winner_count.mean()
+
+# %%
+model.unembed.W_U.dtype
+
+# %%
+logits = einops.einsum(kws.features[0], model.unembed.W_U.to(torch.bfloat16), 'f, f d -> d')
+
+values, indices = logits.sort(descending=True)
+
+print("Most likely next:",
+model.to_str_tokens(indices[:10])
+      )
+
+print("Least likely next:",
+model.to_str_tokens(indices[-10:])
+      )
+
 
 
 

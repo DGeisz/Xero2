@@ -189,7 +189,7 @@ class KWinnerSynthesis:
 
             if self.config.log_freq is not None:
                 winner_count += run_output.winner_count
-                cumulative_error += error.abs().sum().item()
+                cumulative_error += error.pow(2).sum().item()
 
             if self.config.update_dead_neurons_freq is not None:
                 dead_neuron_winner_count += run_output.winner_count

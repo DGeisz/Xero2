@@ -25,7 +25,7 @@ class KWSConfig:
     lr_schedule: Optional[List[Tuple[int, float]]] = None
 
     hyp_min = 0.001
-    update_mini_batch_size = 200
+    update_mini_batch_size: int = 200
 
     ## Logging
     log_freq: Optional[Int] = 10

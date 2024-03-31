@@ -118,6 +118,13 @@ else:
     all_tokens = shuffle_data(all_tokens)
 
 
+def get_acts(tokens):
+    _, cache = model.run_with_cache(
+        tokens, stop_at_layer=cfg["layer"] + 1, names_filter=cfg["act_name"]
+    )
+    return cache[cfg["act_name"]]
+
+
 # %%
 class Buffer:
     """

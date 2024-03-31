@@ -21,7 +21,8 @@ default_cfg = {
     "enc_dtype": "fp32",
     "remove_rare_dir": False,
     "model_name": "gelu-2l",
-    "site": "mlp_out",
+    # "site": "mlp_out",
+    "site": "post",
     "layer": 0,
     "device": "cuda:0",
 }

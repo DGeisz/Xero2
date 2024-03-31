@@ -17,7 +17,7 @@ from setup import *
 
 # %%
 simple_config = KWSConfig(
-    num_features=8_000,
+    num_features=512 * 4 * 8,
     n_winners=5,
     num_batches=100,
     update_mini_batch_size=200,

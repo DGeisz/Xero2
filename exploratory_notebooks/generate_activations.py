@@ -20,7 +20,7 @@ default_cfg = {
     "seq_len": 128,
     "enc_dtype": "fp32",
     "remove_rare_dir": False,
-    "model_name": "gelu-2l",
+    "model_name": "gelu-1l",
     # "site": "mlp_out",
     "site": "post",
     "layer": 0,

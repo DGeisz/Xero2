@@ -107,6 +107,31 @@ class KWinnerSynthesis:
             values[:, :n_winners],
         )
 
+    def reconstruct(self, data):
+        raw_output = einops.einsum(data, self.features, "n d, f d -> n f")
+        winner_indices = t.argsort(raw_output, descending=True, dim=-1)[
+            :, : self.config.n_winners
+        ]
+
+        # We want to set all values that weren't winners to 0
+        mask = t.zeros_like(raw_output)
+        winner_rows = (
+            t.arange(winner_indices.size(0)).unsqueeze(1).expand_as(winner_indices)
+        )
+        mask[winner_rows, winner_indices] = 1
+
+        winner_count = mask.sum(dim=0)
+
+        feature_output = mask * raw_output
+        max_output = feature_output.max(dim=-1).values.unsqueeze(1)
+
+        reconstructed_data = einops.einsum(
+            feature_output, self.features, "n f, f d -> n d"
+        )
+
+        return reconstructed_data
+
+
     def run_and_reconstruct_single_batch(self) -> KWSSingleBatchOutput:
         data = self.random_data_batch()
 

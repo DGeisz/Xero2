@@ -16,6 +16,8 @@ import tqdm.notebook as tqdm
 import plotly.express as px
 import pandas as pd
 
+from generate_activations import model, all_tokens, cfg, get_acts
+
 # %%
 cfg = {
     "seed": 49,
@@ -35,6 +37,7 @@ cfg = {
 cfg["model_batch_size"] = 64
 cfg["buffer_size"] = cfg["batch_size"] * cfg["buffer_mult"]
 cfg["buffer_batches"] = cfg["buffer_size"] // cfg["seq_len"]
+
 
 # %%
 DTYPES = {"fp32": torch.float32, "fp16": torch.float16, "bf16": torch.bfloat16}
@@ -148,7 +151,11 @@ def get_recons_loss(num_batches=5, local_encoder=None):
         local_encoder = encoder
     loss_list = []
     for i in range(num_batches):
-        tokens = all_tokens[torch.randperm(len(all_tokens))[: cfg["model_batch_size"]]]
+        tokens = all_tokens[torch.randperm(len(all_tokens))[: cfg["model_batch_size"] * 4]]
+        
+        if i == 0:
+            print('tokens.shape', tokens.shape)
+
         loss = model(tokens, return_type="loss")
         recons_loss = model.run_with_hooks(
             tokens,
@@ -179,28 +186,7 @@ def get_recons_loss(num_batches=5, local_encoder=None):
     return score, loss, recons_loss, zero_abl_loss
 
 
-# %%
-tokens = all_tokens[torch.randperm(len(all_tokens))[: cfg["model_batch_size"]]]
 
-# %%
-_, cache = model.run_with_cache(tokens)
-
-
-# %%
-list(cache.keys())
-# %%
-original = cache["post", 0]
-recon = encoder(original)[1]
-
-# %%
-diff = original - recon
-
-# %%
-diff.pow(2).sum() / (64 * 128)
-
-
-# %%
-utils.get_act_name("post", 0)
 
 
 # %%
@@ -466,6 +452,13 @@ def make_token_df(tokens, len_prefix=5, len_suffix=1):
         )
     )
 
+# %%
+at = all_tokens
+
+# %%
+at.shape
+
+
 
 # %%
 model = HookedTransformer.from_pretrained("gelu-1l").to(DTYPES[cfg["enc_dtype"]])
@@ -480,7 +473,20 @@ d_vocab = model.cfg.d_vocab
 data = load_dataset("NeelNanda/c4-code-20k", split="train")
 tokenized_data = utils.tokenize_and_concatenate(data, model.tokenizer, max_length=128)
 tokenized_data = tokenized_data.shuffle(42)
+
+# %%
 all_tokens = tokenized_data["tokens"]
+small_tokens = all_tokens
+
+# %%
+big_tokens = at
+all_tokens = at
+
+# %%
+
+
+
+
 
 # %%
 auto_encoder_run = "run1"  # @param ["run1", "run2"]
@@ -493,6 +499,39 @@ encoder.W_enc.shape
 model.cfg
 
 # %%
-_ = get_recons_loss(num_batches=5, local_encoder=encoder)
+_ = get_recons_loss(num_batches=10, local_encoder=encoder)
+
+# %%
+cfg['model_batch_size']
+
+
+
+# %%
+num = 64 * 4
+
+tokens = all_tokens[torch.randperm(len(all_tokens))[: num]]
+
+# %%
+_, cache = model.run_with_cache(tokens)
+
+
+# %%
+list(cache.keys())
+# %%
+original = cache["post", 0]
+recon = encoder(original)[1]
+
+# %%
+diff = original - recon
+
+# %%
+diff.pow(2).sum() / (num * 128)
+
+
+
+
+# %%
+tokens.shape
+
 
 # %%

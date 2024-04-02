@@ -19,6 +19,7 @@ tensorboard
 plotly
 sympy
 huggingface_hub
+gradio
 accelerate
 pre-commit
 diffusers

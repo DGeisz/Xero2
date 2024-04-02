@@ -1,0 +1,148 @@
+2024-04-01 23:58:47,735 INFO    StreamThr :2106 [internal.py:wandb_internal():87] W&B internal server running at pid: 2106, started at: 2024-04-01 23:58:47.734936
+2024-04-01 23:58:47,737 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status
+2024-04-01 23:58:47,746 INFO    WriterThread:2106 [datastore.py:open_for_write():85] open: /root/Xero2/exploratory_notebooks/wandb/run-20240401_235847-ja02bocw/run-ja02bocw.wandb
+2024-04-01 23:58:47,747 DEBUG   SenderThread:2106 [sender.py:send():336] send: header
+2024-04-01 23:58:47,756 DEBUG   SenderThread:2106 [sender.py:send():336] send: run
+2024-04-01 23:58:48,250 INFO    SenderThread:2106 [dir_watcher.py:__init__():216] watching files in: /root/Xero2/exploratory_notebooks/wandb/run-20240401_235847-ja02bocw/files
+2024-04-01 23:58:48,250 INFO    SenderThread:2106 [sender.py:_start_run_threads():1067] run started: ja02bocw with start time 1712015927.732671
+2024-04-01 23:58:48,251 DEBUG   SenderThread:2106 [sender.py:send_request():363] send_request: summary_record
+2024-04-01 23:58:48,251 INFO    SenderThread:2106 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2024-04-01 23:58:48,253 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: check_version
+2024-04-01 23:58:48,253 DEBUG   SenderThread:2106 [sender.py:send_request():363] send_request: check_version
+2024-04-01 23:58:48,404 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: run_start
+2024-04-01 23:58:48,427 DEBUG   HandlerThread:2106 [system_info.py:__init__():31] System info init
+2024-04-01 23:58:48,427 DEBUG   HandlerThread:2106 [system_info.py:__init__():46] System info init done
+2024-04-01 23:58:48,427 INFO    HandlerThread:2106 [system_monitor.py:start():151] Starting system monitor
+2024-04-01 23:58:48,427 INFO    SystemMonitor:2106 [system_monitor.py:_start():116] Starting system asset monitoring threads
+2024-04-01 23:58:48,428 INFO    HandlerThread:2106 [system_monitor.py:probe():172] Collecting system info
+2024-04-01 23:58:48,429 INFO    SystemMonitor:2106 [interfaces.py:start():168] Started cpu
+2024-04-01 23:58:48,429 INFO    SystemMonitor:2106 [interfaces.py:start():168] Started disk
+2024-04-01 23:58:48,431 INFO    SystemMonitor:2106 [interfaces.py:start():168] Started gpu
+2024-04-01 23:58:48,432 INFO    SystemMonitor:2106 [interfaces.py:start():168] Started memory
+2024-04-01 23:58:48,432 INFO    SystemMonitor:2106 [interfaces.py:start():168] Started network
+2024-04-01 23:58:48,446 DEBUG   HandlerThread:2106 [system_info.py:probe():195] Probing system
+2024-04-01 23:58:48,448 DEBUG   HandlerThread:2106 [system_info.py:_probe_git():180] Probing git
+2024-04-01 23:58:48,457 DEBUG   HandlerThread:2106 [system_info.py:_probe_git():188] Probing git done
+2024-04-01 23:58:48,457 DEBUG   HandlerThread:2106 [system_info.py:probe():241] Probing system done
+2024-04-01 23:58:48,458 DEBUG   HandlerThread:2106 [system_monitor.py:probe():181] {'os': 'Linux-6.5.0-18-generic-x86_64-with-glibc2.35', 'python': '3.11.8', 'heartbeatAt': '2024-04-01T23:58:48.446669', 'startedAt': '2024-04-01T23:58:47.708149', 'docker': None, 'cuda': None, 'args': None, 'state': 'running', 'program': '/root/Xero2/exploratory_notebooks/train_autoencoder.py', 'codePath': 'exploratory_notebooks/train_autoencoder.py', 'git': {'remote': 'https://github.com/DGeisz/Xero2.git', 'commit': '792655c3e69e53c6147ccaafa37ed326b076d900'}, 'email': 'you@example.com', 'root': '/root/Xero2', 'host': '8ce0929e5b9c', 'username': 'root', 'executable': '/root/miniconda3/envs/arena-env/bin/python', 'cpu_count': 16, 'cpu_count_logical': 32, 'cpu_freq': {'current': 1620.356875, 'min': 1200.0, 'max': 3000.0}, 'cpu_freq_per_core': [{'current': 2232.229, 'min': 1200.0, 'max': 3000.0}, {'current': 1200.0, 'min': 1200.0, 'max': 3000.0}, {'current': 1200.0, 'min': 1200.0, 'max': 3000.0}, {'current': 2961.961, 'min': 1200.0, 'max': 3000.0}, {'current': 1200.0, 'min': 1200.0, 'max': 3000.0}, {'current': 1200.0, 'min': 1200.0, 'max': 3000.0}, {'current': 1200.0, 'min': 1200.0, 'max': 3000.0}, {'current': 1200.707, 'min': 1200.0, 'max': 3000.0}, {'current': 1200.0, 'min': 1200.0, 'max': 3000.0}, {'current': 2000.18, 'min': 1200.0, 'max': 3000.0}, {'current': 2000.243, 'min': 1200.0, 'max': 3000.0}, {'current': 1200.0, 'min': 1200.0, 'max': 3000.0}, {'current': 2316.121, 'min': 1200.0, 'max': 3000.0}, {'current': 2358.466, 'min': 1200.0, 'max': 3000.0}, {'current': 1200.0, 'min': 1200.0, 'max': 3000.0}, {'current': 1300.0, 'min': 1200.0, 'max': 3000.0}, {'current': 3000.0, 'min': 1200.0, 'max': 3000.0}, {'current': 2961.965, 'min': 1200.0, 'max': 3000.0}, {'current': 1200.0, 'min': 1200.0, 'max': 3000.0}, {'current': 1200.0, 'min': 1200.0, 'max': 3000.0}, {'current': 1200.0, 'min': 1200.0, 'max': 3000.0}, {'current': 2100.18, 'min': 1200.0, 'max': 3000.0}, {'current': 1200.0, 'min': 1200.0, 'max': 3000.0}, {'current': 1200.0, 'min': 1200.0, 'max': 3000.0}, {'current': 2358.58, 'min': 1200.0, 'max': 3000.0}, {'current': 1200.0, 'min': 1200.0, 'max': 3000.0}, {'current': 2200.0, 'min': 1200.0, 'max': 3000.0}, {'current': 2358.452, 'min': 1200.0, 'max': 3000.0}, {'current': 1200.0, 'min': 1200.0, 'max': 3000.0}, {'current': 1200.0, 'min': 1200.0, 'max': 3000.0}, {'current': 2098.183, 'min': 1200.0, 'max': 3000.0}, {'current': 2358.428, 'min': 1200.0, 'max': 3000.0}], 'disk': {'total': 80.0, 'used': 53.15725326538086}, 'gpu': 'NVIDIA RTX A4000', 'gpu_count': 1, 'gpu_devices': [{'name': 'NVIDIA RTX A4000', 'memory_total': 17171480576}], 'memory': {'total': 125.57939529418945}}
+2024-04-01 23:58:48,458 INFO    HandlerThread:2106 [system_monitor.py:probe():182] Finished collecting system info
+2024-04-01 23:58:48,458 INFO    HandlerThread:2106 [system_monitor.py:probe():185] Publishing system info
+2024-04-01 23:58:48,458 DEBUG   HandlerThread:2106 [system_info.py:_save_pip():51] Saving list of pip packages installed into the current environment
+2024-04-01 23:58:48,458 DEBUG   HandlerThread:2106 [system_info.py:_save_pip():67] Saving pip packages done
+2024-04-01 23:58:48,458 DEBUG   HandlerThread:2106 [system_info.py:_save_conda():74] Saving list of conda packages installed into the current environment
+2024-04-01 23:58:49,253 INFO    Thread-13 :2106 [dir_watcher.py:_on_file_created():275] file/dir created: /root/Xero2/exploratory_notebooks/wandb/run-20240401_235847-ja02bocw/files/conda-environment.yaml
+2024-04-01 23:58:49,253 INFO    Thread-13 :2106 [dir_watcher.py:_on_file_created():275] file/dir created: /root/Xero2/exploratory_notebooks/wandb/run-20240401_235847-ja02bocw/files/wandb-summary.json
+2024-04-01 23:58:49,253 INFO    Thread-13 :2106 [dir_watcher.py:_on_file_created():275] file/dir created: /root/Xero2/exploratory_notebooks/wandb/run-20240401_235847-ja02bocw/files/requirements.txt
+2024-04-01 23:58:56,256 INFO    Thread-13 :2106 [dir_watcher.py:_on_file_modified():292] file/dir modified: /root/Xero2/exploratory_notebooks/wandb/run-20240401_235847-ja02bocw/files/conda-environment.yaml
+2024-04-01 23:58:56,260 DEBUG   HandlerThread:2106 [system_info.py:_save_conda():86] Saving conda packages done
+2024-04-01 23:58:56,262 INFO    HandlerThread:2106 [system_monitor.py:probe():187] Finished publishing system info
+2024-04-01 23:58:56,285 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-01 23:58:56,285 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-01 23:58:56,286 DEBUG   SenderThread:2106 [sender.py:send():336] send: files
+2024-04-01 23:58:56,286 INFO    SenderThread:2106 [sender.py:_save_file():1321] saving file wandb-metadata.json with policy now
+2024-04-01 23:58:56,310 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: stop_status
+2024-04-01 23:58:56,310 DEBUG   SenderThread:2106 [sender.py:send_request():363] send_request: stop_status
+2024-04-01 23:58:56,558 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: partial_history
+2024-04-01 23:58:56,583 DEBUG   SenderThread:2106 [sender.py:send():336] send: telemetry
+2024-04-01 23:58:56,585 DEBUG   SenderThread:2106 [sender.py:send():336] send: history
+2024-04-01 23:58:56,585 DEBUG   SenderThread:2106 [sender.py:send_request():363] send_request: summary_record
+2024-04-01 23:58:56,588 INFO    SenderThread:2106 [sender.py:_save_file():1321] saving file wandb-summary.json with policy end
+2024-04-01 23:58:56,809 INFO    wandb-upload_0:2106 [upload_job.py:push():138] Uploaded file /tmp/tmp8vc0kk8twandb/9thcpytg-wandb-metadata.json
+2024-04-01 23:58:57,256 INFO    Thread-13 :2106 [dir_watcher.py:_on_file_modified():292] file/dir modified: /root/Xero2/exploratory_notebooks/wandb/run-20240401_235847-ja02bocw/files/wandb-summary.json
+2024-04-01 23:58:57,256 INFO    Thread-13 :2106 [dir_watcher.py:_on_file_created():275] file/dir created: /root/Xero2/exploratory_notebooks/wandb/run-20240401_235847-ja02bocw/files/output.log
+2024-04-01 23:58:57,257 INFO    Thread-13 :2106 [dir_watcher.py:_on_file_created():275] file/dir created: /root/Xero2/exploratory_notebooks/wandb/run-20240401_235847-ja02bocw/files/wandb-metadata.json
+2024-04-01 23:58:59,257 INFO    Thread-13 :2106 [dir_watcher.py:_on_file_modified():292] file/dir modified: /root/Xero2/exploratory_notebooks/wandb/run-20240401_235847-ja02bocw/files/output.log
+2024-04-01 23:58:59,377 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-01 23:59:01,258 INFO    Thread-13 :2106 [dir_watcher.py:_on_file_modified():292] file/dir modified: /root/Xero2/exploratory_notebooks/wandb/run-20240401_235847-ja02bocw/files/output.log
+2024-04-01 23:59:04,378 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-01 23:59:09,379 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-01 23:59:11,310 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-01 23:59:11,310 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-01 23:59:14,380 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-01 23:59:16,311 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-01 23:59:19,386 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-01 23:59:20,266 INFO    Thread-13 :2106 [dir_watcher.py:_on_file_modified():292] file/dir modified: /root/Xero2/exploratory_notebooks/wandb/run-20240401_235847-ja02bocw/files/config.yaml
+2024-04-01 23:59:21,312 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-01 23:59:24,589 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-01 23:59:26,314 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-01 23:59:29,591 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-01 23:59:31,315 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-01 23:59:34,592 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-01 23:59:36,316 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-01 23:59:39,593 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-01 23:59:41,317 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-01 23:59:44,594 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-01 23:59:46,318 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-01 23:59:48,433 DEBUG   SystemMonitor:2106 [system_monitor.py:_start():130] Starting system metrics aggregation loop
+2024-04-01 23:59:48,435 DEBUG   SenderThread:2106 [sender.py:send():336] send: stats
+2024-04-01 23:59:50,437 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-01 23:59:51,320 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-01 23:59:55,508 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-01 23:59:56,321 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-01 23:59:57,282 INFO    Thread-13 :2106 [dir_watcher.py:_on_file_modified():292] file/dir modified: /root/Xero2/exploratory_notebooks/wandb/run-20240401_235847-ja02bocw/files/output.log
+2024-04-02 00:00:00,509 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:00:01,322 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:00:05,510 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:00:06,323 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:00:10,511 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:00:11,324 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:00:15,512 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:00:16,326 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:00:18,438 DEBUG   SenderThread:2106 [sender.py:send():336] send: stats
+2024-04-02 00:00:21,327 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:00:21,440 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:00:26,328 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:00:26,441 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:00:31,329 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:00:31,442 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:00:36,330 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:00:36,443 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:00:41,331 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:00:41,444 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:00:46,332 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:00:46,445 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:00:48,441 DEBUG   SenderThread:2106 [sender.py:send():336] send: stats
+2024-04-02 00:00:51,305 INFO    Thread-13 :2106 [dir_watcher.py:_on_file_modified():292] file/dir modified: /root/Xero2/exploratory_notebooks/wandb/run-20240401_235847-ja02bocw/files/output.log
+2024-04-02 00:00:51,333 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:00:52,408 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:00:56,334 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:00:57,409 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:01:01,309 INFO    Thread-13 :2106 [dir_watcher.py:_on_file_modified():292] file/dir modified: /root/Xero2/exploratory_notebooks/wandb/run-20240401_235847-ja02bocw/files/output.log
+2024-04-02 00:01:01,335 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:01:03,176 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:01:06,337 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:01:08,177 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:01:11,338 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:01:13,178 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:01:16,339 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:01:18,179 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:01:18,443 DEBUG   SenderThread:2106 [sender.py:send():336] send: stats
+2024-04-02 00:01:21,340 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:01:23,444 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:01:26,342 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:01:28,446 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:01:31,343 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:01:33,447 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:01:36,344 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:01:38,448 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:01:41,345 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:01:43,449 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:01:46,346 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:01:48,445 DEBUG   SenderThread:2106 [sender.py:send():336] send: stats
+2024-04-02 00:01:49,446 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:01:51,348 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:01:54,447 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:01:56,349 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:01:59,448 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:02:01,350 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:02:04,449 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:02:06,351 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:02:09,450 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:02:11,353 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:02:14,451 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:02:16,354 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:02:18,447 DEBUG   SenderThread:2106 [sender.py:send():336] send: stats
+2024-04-02 00:02:20,448 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:02:21,355 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive
+2024-04-02 00:02:25,449 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: status_report
+2024-04-02 00:02:26,356 DEBUG   HandlerThread:2106 [handler.py:handle_request():144] handle_request: keepalive

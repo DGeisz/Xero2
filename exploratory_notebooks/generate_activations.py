@@ -2,6 +2,8 @@
 import random
 from setup import *
 from datasets import load_dataset
+import tqdm
+from functools import partial
 
 torch = t
 

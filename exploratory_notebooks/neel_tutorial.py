@@ -150,9 +150,6 @@ logit_diff_directions = (
 print("Logit difference directions shape:", logit_diff_directions.shape)
 
 # %%
-model
-
-# %%
 final_residual_stream = cache["resid_post", -1]
 print("Final residual stream shape:", final_residual_stream.shape)
 final_token_residual_stream = final_residual_stream[:, -1, :]
@@ -511,6 +508,11 @@ scatter(
 
 
 # %%
+# utils.get_act_name('attn', 0)
+cache["attn", 0].shape
+
+
+# %%
 def patch_head_pattern(
     corrupted_head_pattern: Float[torch.Tensor, "batch head_index query_pos d_head"],
     hook,
@@ -556,6 +558,9 @@ scatter(
     xaxis="Attention Patch",
     yaxis="Output Patch",
     title="Scatter plot of output patching vs attention patching",
+    color=einops.repeat(
+        np.arange(model.cfg.n_layers), "layer -> (layer head)", head=model.cfg.n_heads
+    ),
 )
 
 # %%

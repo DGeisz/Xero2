@@ -1,4 +1,6 @@
 .git
 data
 **/__pycache__
+**/sae_visualizer
+**/wandb
 .python-version

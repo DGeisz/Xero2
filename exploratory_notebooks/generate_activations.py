@@ -1,7 +1,13 @@
 # %%
+%load_ext autoreload
+%autoreload 2
+
+# %%
 import random
 from setup import *
 from datasets import load_dataset
+import tqdm
+from functools import partial
 
 torch = t
 

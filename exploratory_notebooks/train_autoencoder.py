@@ -1,4 +1,8 @@
 # %%
+%load_ext autoreload
+%autoreload 2
+
+# %%
 from generate_activations import *
 import tqdm
 import wandb

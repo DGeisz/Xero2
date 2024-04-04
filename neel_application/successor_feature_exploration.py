@@ -607,7 +607,8 @@ top_positive_logit_attr_heads = torch.topk(
 ).indices
 
 HTML(visualize_attention_patterns(
-    top_positive_logit_attr_heads,
+    # top_positive_logit_attr_heads,
+    [(9 * 12) + 1],
     clean_cache,
     clean_tokens[0],
     f"Top {top_k} Positive Logit Attribution Heads",

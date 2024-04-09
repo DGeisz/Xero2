@@ -15,7 +15,7 @@ from pathlib import Path
 import numpy as np
 import einops
 from jaxtyping import Int, Float
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Dict
 import functools
 from tqdm import tqdm
 from IPython.display import display
@@ -537,6 +537,162 @@ run_activation_ablation_on_attn_pattern = partial(run_attention_activation_ablat
 run_zero_ablation_on_attn_head = partial(run_attention_zero_ablation, patching_function=zero_ablate_head_pattern, hook_name="attn", component_title="Attention Pattern")
 
 # %%
+def ablate_activation(original_comp: Float[torch.Tensor, 'batch pos head_index d_head'], hook, pos, head_index, replace_cache):
+    original_comp[:, pos, head_index, :] = replace_cache[hook.name][:, pos, head_index, :]
+
+    return original_comp
+
+def run_attention_activation_ablation_on_head(clean_tokens, corrupted_tokens, heads: List[Tuple[int, int]], return_patch=False):
+    _, clean_cache = model.run_with_cache(clean_tokens)
+    _, corrupted_cache = model.run_with_cache(corrupted_tokens)
+
+    base_value = get_linear_feature_activation_from_cache(clean_cache, averaged=True)
+
+    head_diff = torch.zeros(
+        len(heads), clean_tokens.shape[1], device=device, dtype=torch.float32
+    )
+
+    for i, (layer, head_index) in enumerate(heads):
+        for position in range(clean_tokens.shape[1]):
+            layer_9_z_store = []
+
+            hook_fn = partial(ablate_activation, head_index=head_index, pos=position, replace_cache=corrupted_cache)
+            fetch_fn = partial(fetch_layer_9_z_activation, store=layer_9_z_store)
+
+            model.run_with_hooks(
+                clean_tokens,
+                fwd_hooks=[
+                    (utils.get_act_name("z", layer, 'attn'), hook_fn),
+                    (utils.get_act_name('z', 9), fetch_fn)
+                ],
+                return_type="logits",
+            )
+
+            feature_activation = get_linear_feature_activation(layer_9_z_store[0], averaged=True)
+
+            head_diff[i, position] = normalize_ablation_result(feature_activation, base_value)
+
+
+    prompt_position_labels = [
+        f"{tok}_{i}" for i, tok in enumerate(model.to_str_tokens(clean_tokens[0]))
+    ]
+
+    head_labels = [f"L{layer}H{head}" for layer, head in heads]
+
+    imshow(
+        head_diff,
+        x=prompt_position_labels,
+        y=head_labels,
+        title=f"Logit Difference From Ablated Attention Head",
+        labels={"x": "Position", "y": "Head"},
+    )
+
+    if return_patch:
+        return head_diff
+
+def run_attention_activation_patching_on_head(clean_tokens, corrupted_tokens, heads: List[Tuple[int, int]], return_patch=False):
+    _, clean_cache = model.run_with_cache(clean_tokens)
+
+    normalize = get_normalizing_function_for_tokens(clean_cache=clean_cache, corrupted_tokens=corrupted_tokens)
+
+    head_diff = torch.zeros(
+        len(heads), clean_tokens.shape[1], device=device, dtype=torch.float32
+    )
+
+    for i, (layer, head_index) in enumerate(heads):
+        for position in range(clean_tokens.shape[1]):
+            layer_9_z_store = []
+
+            hook_fn = partial(ablate_activation, head_index=head_index, pos=position, replace_cache=clean_cache)
+            fetch_fn = partial(fetch_layer_9_z_activation, store=layer_9_z_store)
+
+            model.run_with_hooks(
+                corrupted_tokens,
+                fwd_hooks=[
+                    (utils.get_act_name("z", layer, 'attn'), hook_fn),
+                    (utils.get_act_name('z', 9), fetch_fn)
+                ],
+                return_type="logits",
+            )
+
+            feature_activation = get_linear_feature_activation(layer_9_z_store[0], averaged=True)
+
+            head_diff[i, position] = normalize(feature_activation)
+
+
+    prompt_position_labels = [
+        f"{tok}_{i}" for i, tok in enumerate(model.to_str_tokens(clean_tokens[0]))
+    ]
+
+    head_labels = [f"L{layer}H{head}" for layer, head in heads]
+
+    imshow(
+        head_diff,
+        x=prompt_position_labels,
+        y=head_labels,
+        title=f"Logit Difference From Patched Attention Head",
+        labels={"x": "Position", "y": "Head"},
+    )
+
+    if return_patch:
+        return head_diff
+
+# %%
+def isolate_circuit_hook(
+    original_comp: Float[torch.Tensor, 'batch pos head_index d_model'],
+    hook,
+    allowed_heads: Dict[int, List[int]],
+    passthrough_layers: List[int]
+):
+    layer = int(hook.name.split('.')[1])
+
+    if layer in passthrough_layers:
+        return original_comp
+
+    layer_heads = allowed_heads.get(layer, [])
+
+    for head in range(model.cfg.n_heads):
+        if head not in layer_heads:
+            original_comp[:, :, head, :] = t.zeros_like(original_comp[:, :, head, :])
+
+    return original_comp
+
+
+def exclude_heads_from_head_indices(head_indices):
+    all_heads = list(range(model.cfg.n_heads))
+
+    return [head for head in all_heads if head not in head_indices]
+
+
+def run_isolated_circuit(
+    tokens, 
+    allowed_heads: Dict[int, List[int]], 
+    passthrough_layers: List[int]
+):
+    _, cache = model.run_with_cache(tokens)
+
+    base_activation = get_linear_feature_activation_from_cache(cache, averaged=False)
+
+    layer_9_z_store = []
+
+    hook_fn = partial(isolate_circuit_hook, allowed_heads=allowed_heads, passthrough_layers=passthrough_layers)
+    fetch_fn = partial(fetch_layer_9_z_activation, store=layer_9_z_store)
+
+    model.run_with_hooks(
+        tokens,
+        fwd_hooks=[
+            (lambda name: name.startswith('blocks') and name.endswith('hook_z'), hook_fn),
+            (utils.get_act_name('z', 9), fetch_fn)
+        ],
+        return_type="logits",
+    )
+
+    isolated_activation = get_linear_feature_activation(layer_9_z_store[0], averaged=False)
+
+    return isolated_activation, base_activation
+
+
+# %%
 def head_index(layer: int, head: int):
     return (layer * model.cfg.n_heads) + head
 
@@ -586,6 +742,10 @@ def visualize_attention_patterns(
 
     # Return the visualisation as raw code
     return f"<div style='max-width: {str(max_width)}px;'>{title_html + plot}</div>"
+
+
+
+
 
 
 # %%
@@ -762,34 +922,154 @@ print_prompt_stats(simple_corrupted_prompts)
 run_full_analysis(simple_tokens, simple_corrupted_tokens)
 
 # %%
-
-
-run_activation_ablation_on_residual_stream(simple_tokens, long_distance_second_number_corrupted_tokens)
+run_activation_ablation_on_residual_stream(long_distance_tokens, long_distance_prefix_name_corrupted_tokens)
 # %%
-run_activation_patching_on_residual_stream(simple_tokens, long_distance_second_number_corrupted_tokens)
+run_activation_patching_on_residual_stream(long_distance_tokens, long_distance_prefix_name_corrupted_tokens)
 
 # %%
-run_activation_patching_on_attn_output(simple_tokens, long_distance_second_number_corrupted_tokens)
+run_activation_patching_on_attn_output(long_distance_tokens, long_distance_prefix_name_corrupted_tokens)
 
 # %%
-run_activation_patching_on_mlp_output(simple_tokens, long_distance_second_number_corrupted_tokens)
+run_activation_patching_on_mlp_output(long_distance_tokens, long_distance_prefix_name_corrupted_tokens)
 
 # %%
-patched_z_diff = run_activation_patching_on_z_output(simple_tokens, long_distance_second_number_corrupted_tokens, return_patch=True)
+
+run_activation_ablation_on_mlp_output(long_distance_tokens, long_distance_prefix_name_corrupted_tokens)
 
 # %%
-patched_z_diff = run_activation_ablation_on_z_output(simple_tokens, long_distance_second_number_corrupted_tokens, return_patch=True)
+patched_z_diff = run_activation_patching_on_z_output(long_distance_tokens, long_distance_prefix_name_corrupted_tokens, return_patch=True)
 
 # %%
-patched_value_diff = run_activation_patching_on_values(simple_tokens, long_distance_second_number_corrupted_tokens, return_patch=True)
+patched_z_diff = run_activation_ablation_on_z_output(long_distance_tokens, long_distance_prefix_name_corrupted_tokens, return_patch=True)
 
 # %%
-patched_value_diff = run_activation_ablation_on_values(simple_tokens, long_distance_second_number_corrupted_tokens, return_patch=True)
+patched_value_diff = run_activation_patching_on_values(long_distance_tokens, long_distance_prefix_name_corrupted_tokens, return_patch=True)
+
+# %%
+patched_value_diff = run_activation_ablation_on_values(long_distance_tokens, long_distance_prefix_name_corrupted_tokens, return_patch=True)
 
 
 # %%
-patched_attn_diff = run_activation_patching_on_attn_pattern(simple_tokens, long_distance_second_number_corrupted_tokens, return_patch=True)
+patched_attn_diff = run_activation_patching_on_attn_pattern(long_distance_tokens, long_distance_prefix_name_corrupted_tokens, return_patch=True)
 
+# %%
+patched_attn_diff = run_activation_ablation_on_attn_pattern(long_distance_tokens, long_distance_prefix_name_corrupted_tokens, return_patch=True)
+
+# %%
+run_attention_activation_ablation_on_head(
+    # long_distance_tokens, 
+    # long_distance_prefix_name_corrupted_tokens, 
+
+    clean_tokens, 
+    # random_prefix_corrupted_tokens, 
+
+    number_corrupted_tokens,
+    # long_distance_second_number_corrupted_tokens,
+    [
+        # (1, 5), 
+        # (2, 0), 
+        # (4, 4), 
+        # (4, 11), 
+        # (3, 2), 
+        # (5, 0), 
+        # (5, 8), 
+        # (7, 11), 
+
+        (6, 3),
+        (6, 6),
+        (6, 9),
+        (6, 10)
+        # (9, 1)
+    ]
+)
+
+# %%
+run_attention_activation_patching_on_head(
+    clean_tokens, 
+    # random_prefix_corrupted_tokens, 
+    number_corrupted_tokens,
+    # long_distance_second_number_corrupted_tokens,
+    [
+        (6, 3),
+        (6, 6),
+        (6, 9),
+        (6, 10)
+        # (1, 5), 
+        # (2, 0), 
+        # (4, 4), 
+        # (4, 11), 
+        # (3, 2), 
+        # (5, 0), 
+        # (5, 8), 
+        # (7, 11), 
+        # (9, 1)
+    ]
+)
+
+# %% 
+run_isolated_circuit(clean_tokens, {
+    # 5: [0, 8],
+    # 7: [11],
+    # 8: exclude_heads_from_head_indices([2, 3, 4, 5]),
+    # 9: exclude_heads_from_head_indices([0, 4, 5, 6, 7, 8, 9, 10, 11])
+    # 6: exclude_heads_from_head_indices([0, 1, 2, 4, 5, 7, 8]),
+    6: [3, 6, 9, 10],
+    7: [11],
+    9: [1]
+    # 9: [0, 1, 2]
+    }, 
+    # list(range(10))
+    [0, 1, 2, 3, 4, 5]
+)
+# %%
+
+# run_isolated_circuit(long_distance_tokens, {
+#     # 5: [0, 8],
+#     # 7: [11],
+#     8: exclude_heads_from_head_indices([2, 3, 4, 5]),
+#     9: exclude_heads_from_head_indices([0, 4, 5, 6, 7, 8, 9, 10, 11])
+#     # 9: [0, 1, 2]
+#     }, 
+#     # list(range(10))
+#     [0, 1, 2, 3, 4, 5, 6, 7, ]
+# )
+
+# %%
+HTML(visualize_attention_patterns(
+    [
+        head_index(6, 3),
+        head_index(6, 6),
+        head_index(6, 9),
+        head_index(6, 10),
+    ],
+    clean_cache,
+    clean_tokens[0],
+    # long_distance_cache,
+    # long_distance_tokens[0],
+    "Some cool heads"
+))
+
+
+
+# %%
+HTML(visualize_attention_patterns(
+    [
+        head_index(1, 5),
+        # head_index(2, 0),
+        head_index(4, 4),
+        head_index(4, 11),
+        # head_index(3, 2),
+        head_index(5, 0),
+        # head_index(5, 8),
+        head_index(7, 11),
+        head_index(9, 1)
+    ],
+    # clean_cache,
+    # clean_tokens[0],
+    long_distance_cache,
+    long_distance_tokens[0],
+    "Some cool heads"
+))
 
 
 

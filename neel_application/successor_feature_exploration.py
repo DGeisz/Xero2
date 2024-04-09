@@ -8,30 +8,21 @@ import sys
 import plotly.express as px
 import torch as t
 import torch
-from torch import Tensor
 import torch.nn as nn
 import torch.nn.functional as F
-from pathlib import Path
 import numpy as np
 import einops
-from jaxtyping import Int, Float
+from jaxtyping import Float
 from typing import List, Optional, Tuple, Union, Dict
-import functools
-from tqdm import tqdm
 from IPython.display import display
-import webbrowser
-import gdown
-from transformer_lens.hook_points import HookPoint
 from transformer_lens import (
     utils,
     HookedTransformer,
-    HookedTransformerConfig,
-    FactoredMatrix,
     ActivationCache,
 )
 import circuitsvis as cv
 from functools import partial
-from IPython.display import HTML, IFrame
+from IPython.display import HTML
 
 device = t.device("cuda" if t.cuda.is_available() else "cpu")
 
@@ -637,12 +628,14 @@ def run_attention_activation_patching_on_head(clean_tokens, corrupted_tokens, he
     if return_patch:
         return head_diff
 
+
 # %%
 def isolate_circuit_hook(
     original_comp: Float[torch.Tensor, 'batch pos head_index d_model'],
     hook,
     allowed_heads: Dict[int, List[int]],
-    passthrough_layers: List[int]
+    passthrough_layers: List[int],
+    zero_ablated_heads: Dict[int, List[int]] = {},
 ):
     layer = int(hook.name.split('.')[1])
 
@@ -650,10 +643,23 @@ def isolate_circuit_hook(
         return original_comp
 
     layer_heads = allowed_heads.get(layer, [])
+    zero_ablated_heads_for_layer = zero_ablated_heads.get(layer, [])
+
+    num_tokens = original_comp.shape[1]
+
+    bos_activations = einops.repeat(original_comp[:, 0, :, :], 'N n_heads d_heads -> N pos n_heads d_heads', pos=num_tokens)
 
     for head in range(model.cfg.n_heads):
         if head not in layer_heads:
+            # Zero Ablation
+            # original_comp[:, :, head, :] = t.zeros_like(original_comp[:, :, head, :])
+
+            # Ablate with the BOS
+            original_comp[:, :, head, :] = bos_activations[:, :, head, :]
+
+        if head in zero_ablated_heads_for_layer:
             original_comp[:, :, head, :] = t.zeros_like(original_comp[:, :, head, :])
+
 
     return original_comp
 
@@ -667,7 +673,8 @@ def exclude_heads_from_head_indices(head_indices):
 def run_isolated_circuit(
     tokens, 
     allowed_heads: Dict[int, List[int]], 
-    passthrough_layers: List[int]
+    passthrough_layers: List[int],
+    zero_ablated_heads: Dict[int, List[int]] = {}
 ):
     _, cache = model.run_with_cache(tokens)
 
@@ -675,7 +682,13 @@ def run_isolated_circuit(
 
     layer_9_z_store = []
 
-    hook_fn = partial(isolate_circuit_hook, allowed_heads=allowed_heads, passthrough_layers=passthrough_layers)
+    hook_fn = partial(
+        isolate_circuit_hook, 
+        allowed_heads=allowed_heads, 
+        passthrough_layers=passthrough_layers, 
+        zero_ablated_heads=zero_ablated_heads
+    )
+
     fetch_fn = partial(fetch_layer_9_z_activation, store=layer_9_z_store)
 
     model.run_with_hooks(
@@ -776,7 +789,7 @@ def print_prompt_stats(prompts, model=model):
 
     activation = get_linear_feature_activation_from_cache(cache, averaged=True)
 
-    print_prompts(clean_prompts)
+    print_prompts(prompts)
     print()
 
     print("Activations:", activation.item(), get_linear_feature_activation_from_cache(cache, averaged=False))
@@ -812,7 +825,11 @@ state_triples = [
     ("Washington", "California", "Georgia"),
     ("Florida", "Texas", "Idaho"),
     ("Nevada", "Alabama", "Ohio"),
-
+    ("Oregon", "Arizona", "Colorado"),
+    ("Connecticut", "Delaware", "Maryland"),
+    ("Pennsylvania", "Wisconsin", "Minnesota"),
+    ("Indiana", "Iowa", "Illinois"),
+    ("Kansas", "Kentucky", "Louisiana"),
 ]
 
 successor_prompt_format = "14. {} 15. {} 16. {}"
@@ -831,14 +848,22 @@ random_prefix_corrupted_tokens = model.to_tokens(random_prefix_corrupted_prompts
 print_prompt_stats(random_prefix_corrupted_prompts)
 
 # %%
-people_names = ["Daniel", "Rob", "Ashley", "Doug"]
+people_names = [
+    "Daniel", 
+    "Rob", 
+    "Ashley", 
+    "Doug",
+    "Ellen",
+    "Richard",
+    "Emily",
+    "Sarah"
+    "Dave"
+]
 
 name_corrupted_prompts = [successor_prompt_format.format(pair[0][0], pair[0][1], pair[1]) for pair in zip(state_triples, people_names)]
 name_corrupted_tokens = model.to_tokens(name_corrupted_prompts, prepend_bos=True)
 
 print_prompt_stats(name_corrupted_prompts)
-
-
 # %%
 
 corrupted_number_prompt = "14. {} 15. {} 15. {}"
@@ -943,6 +968,10 @@ patched_z_diff = run_activation_patching_on_z_output(long_distance_tokens, long_
 patched_z_diff = run_activation_ablation_on_z_output(long_distance_tokens, long_distance_prefix_name_corrupted_tokens, return_patch=True)
 
 # %%
+run_zero_ablation_on_attn_head(clean_tokens)
+
+
+# %%
 patched_value_diff = run_activation_patching_on_values(long_distance_tokens, long_distance_prefix_name_corrupted_tokens, return_patch=True)
 
 # %%
@@ -956,70 +985,135 @@ patched_attn_diff = run_activation_patching_on_attn_pattern(long_distance_tokens
 patched_attn_diff = run_activation_ablation_on_attn_pattern(long_distance_tokens, long_distance_prefix_name_corrupted_tokens, return_patch=True)
 
 # %%
-run_attention_activation_ablation_on_head(
-    # long_distance_tokens, 
-    # long_distance_prefix_name_corrupted_tokens, 
+important_heads = []
 
-    clean_tokens, 
+for i in included_indices:
+
+    if i > 3:
+        break
+
+    for h in included_indices[i]:
+        important_heads.append((i, h))
+
+
+# %%
+run_attention_activation_ablation_on_head(
+    long_distance_tokens, 
+    long_distance_prefix_name_corrupted_tokens, 
+
+    # clean_tokens, 
     # random_prefix_corrupted_tokens, 
 
-    number_corrupted_tokens,
+    # number_corrupted_tokens,
     # long_distance_second_number_corrupted_tokens,
-    [
-        # (1, 5), 
-        # (2, 0), 
-        # (4, 4), 
-        # (4, 11), 
-        # (3, 2), 
-        # (5, 0), 
-        # (5, 8), 
-        # (7, 11), 
+    important_heads
+    # [
+    #     # (1, 5), 
+    #     # (2, 0), 
+    #     # (4, 4), 
+    #     # (4, 11), 
+    #     # (3, 2), 
+    #     # (5, 0), 
+    #     # (5, 8), 
+    #     # (7, 11), 
 
-        (6, 3),
-        (6, 6),
-        (6, 9),
-        (6, 10)
-        # (9, 1)
-    ]
+    #     (6, 3),
+    #     (6, 6),
+    #     (6, 9),
+    #     (6, 10)
+    #     # (9, 1)
+    # ]
 )
 
 # %%
 run_attention_activation_patching_on_head(
-    clean_tokens, 
+    long_distance_tokens, 
+    long_distance_prefix_name_corrupted_tokens, 
+    # clean_tokens, 
     # random_prefix_corrupted_tokens, 
-    number_corrupted_tokens,
+    # number_corrupted_tokens,
     # long_distance_second_number_corrupted_tokens,
-    [
-        (6, 3),
-        (6, 6),
-        (6, 9),
-        (6, 10)
-        # (1, 5), 
-        # (2, 0), 
-        # (4, 4), 
-        # (4, 11), 
-        # (3, 2), 
-        # (5, 0), 
-        # (5, 8), 
-        # (7, 11), 
-        # (9, 1)
-    ]
+    important_heads
+    # [
+    #     (6, 3),
+    #     (6, 6),
+    #     (6, 9),
+    #     (6, 10)
+    #     # (1, 5), 
+    #     # (2, 0), 
+    #     # (4, 4), 
+    #     # (4, 11), 
+    #     # (3, 2), 
+    #     # (5, 0), 
+    #     # (5, 8), 
+    #     # (7, 11), 
+    #     # (9, 1)
+    # ]
 )
 
 # %% 
-run_isolated_circuit(clean_tokens, {
+included_indices = {
     # 5: [0, 8],
     # 7: [11],
     # 8: exclude_heads_from_head_indices([2, 3, 4, 5]),
     # 9: exclude_heads_from_head_indices([0, 4, 5, 6, 7, 8, 9, 10, 11])
     # 6: exclude_heads_from_head_indices([0, 1, 2, 4, 5, 7, 8]),
-    6: [3, 6, 9, 10],
+    # 6: [3, 6, 9, 10],
+    # 1: [5],
+    # 1: exclude_heads_from_head_indices([0, 1, 2, 4, 6, 7, 9, 11 ]),
+    1: [3, 5, 8, 10],
+    # 2: [8, 10],
+    # 2: exclude_heads_from_head_indices([0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11]),
+    2: [9, 11],
+    # 3: [0, 6, 7, 11],
+    3: [6, 7, 11],
+    # 3: exclude_heads_from_head_indices([1, 2, 3, 4, 5, 8, 9, 10]),
+
+    4: [4, 11],
+    5: [0],
     7: [11],
-    9: [1]
+    9: [1],
+
+    # 0: exclude_heads_from_head_indices([0, 2, 4]),
     # 9: [0, 1, 2]
-    }, 
+}
+
+
+run_isolated_circuit(
+    # clean_tokens, 
+    long_distance_tokens,
+    included_indices,
+    # {
+    # # 5: [0, 8],
+    # # 7: [11],
+    # # 8: exclude_heads_from_head_indices([2, 3, 4, 5]),
+    # # 9: exclude_heads_from_head_indices([0, 4, 5, 6, 7, 8, 9, 10, 11])
+    # # 6: exclude_heads_from_head_indices([0, 1, 2, 4, 5, 7, 8]),
+    # # 6: [3, 6, 9, 10],
+    # # 1: [5],
+    # # 1: exclude_heads_from_head_indices([0, 1, 2, 4, 6, 7, 9, 11 ]),
+    # 1: [3, 5, 8, 10],
+    # # 2: [8, 10],
+    # # 2: exclude_heads_from_head_indices([0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11]),
+    # 2: [9, 11],
+    # # 3: [0, 6, 7, 11],
+    # 3: [6, 7, 11],
+    # # 3: exclude_heads_from_head_indices([1, 2, 3, 4, 5, 8, 9, 10]),
+
+    # 4: [4, 11],
+    # 5: [0],
+    # 7: [11],
+    # 9: [1],
+
+    # # 0: exclude_heads_from_head_indices([0, 2, 4]),
+    # # 9: [0, 1, 2]
+    # }, 
     # list(range(10))
-    [0, 1, 2, 3, 4, 5]
+    [0],
+    zero_ablated_heads={
+        # 1: [10],
+        # 0: [1]
+    }
 )
 # %%
 
@@ -1035,13 +1129,27 @@ run_isolated_circuit(clean_tokens, {
 # )
 
 # %%
+
+
+heads = []
+
+for i in included_indices:
+    for h in included_indices[i]:
+        heads.append(head_index(i, h))
+
+
 HTML(visualize_attention_patterns(
-    [
-        head_index(6, 3),
-        head_index(6, 6),
-        head_index(6, 9),
-        head_index(6, 10),
-    ],
+    # list(range(12)),
+    heads,
+    # [
+    #     # head_index(0, 1),
+    #     # head_index(2, 11),
+    #     # head_index(1, 3),
+    #     # head_index(1, 5),
+    #     # head_index(1, 8),
+    #     # head_index(1, 10),
+    #     # head_index(3, 11),
+    # ],
     clean_cache,
     clean_tokens[0],
     # long_distance_cache,

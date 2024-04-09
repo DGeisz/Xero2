@@ -151,10 +151,12 @@ def get_recons_loss(num_batches=5, local_encoder=None):
         local_encoder = encoder
     loss_list = []
     for i in range(num_batches):
-        tokens = all_tokens[torch.randperm(len(all_tokens))[: cfg["model_batch_size"] * 4]]
-        
+        tokens = all_tokens[
+            torch.randperm(len(all_tokens))[: cfg["model_batch_size"] * 4]
+        ]
+
         if i == 0:
-            print('tokens.shape', tokens.shape)
+            print("tokens.shape", tokens.shape)
 
         loss = model(tokens, return_type="loss")
         recons_loss = model.run_with_hooks(
@@ -184,9 +186,6 @@ def get_recons_loss(num_batches=5, local_encoder=None):
     print(f"Reconstruction Score: {score:.2%}")
     # print(f"{((zero_abl_loss - mean_abl_loss)/(zero_abl_loss - loss)).item():.2%}")
     return score, loss, recons_loss, zero_abl_loss
-
-
-
 
 
 # %%
@@ -452,12 +451,12 @@ def make_token_df(tokens, len_prefix=5, len_suffix=1):
         )
     )
 
+
 # %%
 at = all_tokens
 
 # %%
 at.shape
-
 
 
 # %%
@@ -485,9 +484,6 @@ all_tokens = at
 # %%
 
 
-
-
-
 # %%
 auto_encoder_run = "run1"  # @param ["run1", "run2"]
 encoder = AutoEncoder.load_from_hf(auto_encoder_run)
@@ -502,14 +498,13 @@ model.cfg
 _ = get_recons_loss(num_batches=10, local_encoder=encoder)
 
 # %%
-cfg['model_batch_size']
-
+cfg["model_batch_size"]
 
 
 # %%
 num = 64 * 4
 
-tokens = all_tokens[torch.randperm(len(all_tokens))[: num]]
+tokens = all_tokens[torch.randperm(len(all_tokens))[:num]]
 
 # %%
 _, cache = model.run_with_cache(tokens)
@@ -526,8 +521,6 @@ diff = original - recon
 
 # %%
 diff.pow(2).sum() / (num * 128)
-
-
 
 
 # %%

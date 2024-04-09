@@ -1,6 +1,6 @@
 # %%
-%load_ext autoreload
-%autoreload 2
+# %load_ext autoreload
+# %autoreload 2
 
 # %%
 import random
@@ -27,8 +27,8 @@ default_cfg = {
     "enc_dtype": "fp32",
     "remove_rare_dir": False,
     "model_name": "gelu-1l",
-    "site": "mlp_out",
-    # "site": "post",
+    # "site": "mlp_out",
+    "site": "post",
     "layer": 0,
     "device": "cuda:0",
 }

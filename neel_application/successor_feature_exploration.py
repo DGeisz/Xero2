@@ -122,6 +122,23 @@ model = HookedTransformer.from_pretrained(encoder.cfg["model_name"]).to(DTYPES[e
 FEATURE_I = 18
 FEATURE_BIAS = encoder.b_enc[FEATURE_I]
 
+# %%
+def show_stats_for_string(seq: str):
+    _, cache = model.run_with_cache(seq)
+
+    z = cache['z', 9]
+    z = einops.rearrange(z, "batch seq n_heads d_head -> batch seq (n_heads d_head)")
+
+    acts = encoder(z)[2]
+
+    feature_acts = acts[0, :, 18]
+
+    display(cv.tokens.colored_tokens(tokens=model.to_str_tokens(seq), values=feature_acts, max_value=2))
+
+    print("Max Activation:", feature_acts.max().item())
+    print("All Activations: ", feature_acts.tolist())
+    print("Largest Activations:", feature_acts.sort(descending=True).values[:5].tolist())
+
 
 # %%
 def get_linear_feature_activation(layer_nine_z, averaged=True, feature_i=18):
@@ -789,6 +806,7 @@ def print_prompt_stats(prompts, model=model):
 
     activation = get_linear_feature_activation_from_cache(cache, averaged=True)
 
+    print("Example prompt:", prompts[0])
     print_prompts(prompts)
     print()
 
@@ -840,6 +858,7 @@ clean_tokens = model.to_tokens(clean_prompts, prepend_bos=True)
 _, clean_cache = model.run_with_cache(clean_tokens)
 
 print_prompt_stats(clean_prompts)
+
 # %%
 
 random_prefix_corrupted_prompts = [successor_prompt_format.format('and', 'the', triple[2]) for triple in state_triples]
@@ -856,7 +875,7 @@ people_names = [
     "Ellen",
     "Richard",
     "Emily",
-    "Sarah"
+    "Sarah",
     "Dave"
 ]
 
@@ -874,21 +893,26 @@ number_corrupted_tokens = model.to_tokens(number_corrupted_prompts, prepend_bos=
 print_prompt_stats(number_corrupted_prompts)
 
 # %%
-corrupted_period_prompt = "alpha. {} help. {} 16. {}"
+prefix_number_corrupted_prompt_template = "alpha. {} help. {} 16. {}"
 
-period_corrupted_prompts = [corrupted_period_prompt.format(*triple) for triple in state_triples]
-period_corrupted_tokens = model.to_tokens(period_corrupted_prompts, prepend_bos=True)
+prefix_number_corrupted_prompts = [prefix_number_corrupted_prompt_template.format(*triple) for triple in state_triples]
+prefix_number_corrupted_tokens = model.to_tokens(prefix_number_corrupted_prompts, prepend_bos=True)
 
-print_prompt_stats(period_corrupted_prompts)
+print_prompt_stats(prefix_number_corrupted_prompts)
 
 # %%
 long_distance_prompt = "14. {} 15. then we have much later 16. {}"
 
+## Unique pairs of names
 people_names_prefix = [
     ("Daniel", "Sarah"), 
     ("Doug", "Ashley"), 
     ("Dave", "Ellen"),
-    ( "Richard", "Emily")
+    ( "Emily", "Richard"),
+    ("Rob", "Jeff"),
+    ("Olivia", "Sam"),
+    ("Phil", "Mia"),
+    ("Amelia", "Harper"),
 ]
 
 long_distance_prompts = [long_distance_prompt.format(*pair) for pair in people_names_prefix]
@@ -914,12 +938,21 @@ long_distance_second_number_corrupted_tokens = model.to_tokens(long_distance_sec
 
 print_prompt_stats(long_distance_second_number_corrupted_prompts)
 # %%
-long_distance_first_number_corrupted_prompt = "{} 15. then we have much later 16. {}"
+long_distance_first_number_corrupted_prompt = "alpha and {} 15. then we have much later 16. {}"
 
 long_distance_first_number_corrupted_prompts = [long_distance_first_number_corrupted_prompt.format(*pair) for pair in people_names_prefix]
 long_distance_first_number_corrupted_tokens = model.to_tokens(long_distance_first_number_corrupted_prompts, prepend_bos=True)
 
 print_prompt_stats(long_distance_first_number_corrupted_prompts)
+
+# %%
+long_distance_last_number_corrupted_prompt = "14. {} 15. then we have much later 13. {}"
+
+long_distance_last_number_corrupted_prompts = [long_distance_last_number_corrupted_prompt.format(*pair) for pair in people_names_prefix]
+long_distance_last_number_corrupted_tokens = model.to_tokens(long_distance_last_number_corrupted_prompts, prepend_bos=True)
+
+print_prompt_stats(long_distance_last_number_corrupted_prompts)
+
 
 # %%
 months = [
@@ -936,12 +969,60 @@ _, simple_cache = model.run_with_cache(simple_tokens)
 print_prompt_stats(simple_prompts)
 
 # %%
-# simple_corrupted_prompts = ["the weekend of but 16-" for _ in range(len(simple_prompts))]
-simple_corrupted_prompts = [f"the weekend of {month} 15-" for month in months]
+simple_corrupted_prompts = [f"the weekend of {month} 14-" for month in months]
 simple_corrupted_tokens = model.to_tokens(simple_corrupted_prompts, prepend_bos=True)
 
 print_prompt_stats(simple_corrupted_prompts)
 
+# %%
+time_corrupted_prompt = "the difference of alpha 16-"
+
+time_corrupted_prompts = [time_corrupted_prompt for _ in months]
+time_corrupted_tokens = model.to_tokens(time_corrupted_prompts, prepend_bos=True)
+
+print_prompt_stats(time_corrupted_prompts)
+
+# %%
+run_full_analysis(long_distance_tokens, long_distance_prefix_name_corrupted_tokens)
+
+# %%
+run_attention_activation_ablation_on_head(
+    long_distance_tokens, 
+    long_distance_prefix_name_corrupted_tokens,
+    [
+        (1, 5),
+        (4, 4), 
+        (4, 11), 
+        # (5, 0), 
+        # (7, 11), 
+        # (9, 1)
+    ]
+)
+
+# %%
+run_attention_activation_patching_on_head(
+    long_distance_tokens, 
+    long_distance_prefix_name_corrupted_tokens,
+    [
+        (1, 5),
+        (4, 4), 
+        (4, 11), 
+        # (5, 0), 
+        # (7, 11), 
+        # (9, 1)
+    ]
+)
+
+
+
+# %%
+run_activation_patching_on_residual_stream(clean_tokens, random_prefix_corrupted_tokens)
+
+# %%
+run_activation_ablation_on_residual_stream(simple_tokens, time_corrupted_tokens)
+
+# %%
+patched_z_diff = run_activation_ablation_on_z_output(simple_tokens, time_corrupted_tokens, return_patch=True)
 
 # %%
 run_full_analysis(simple_tokens, simple_corrupted_tokens)
@@ -983,6 +1064,35 @@ patched_attn_diff = run_activation_patching_on_attn_pattern(long_distance_tokens
 
 # %%
 patched_attn_diff = run_activation_ablation_on_attn_pattern(long_distance_tokens, long_distance_prefix_name_corrupted_tokens, return_patch=True)
+
+# %%
+included_indices = {
+    # 5: [0, 8],
+    # 7: [11],
+    # 8: exclude_heads_from_head_indices([2, 3, 4, 5]),
+    # 9: exclude_heads_from_head_indices([0, 4, 5, 6, 7, 8, 9, 10, 11])
+    # 6: exclude_heads_from_head_indices([0, 1, 2, 4, 5, 7, 8]),
+    # 6: [3, 6, 9, 10],
+    # 1: [5],
+    # 1: exclude_heads_from_head_indices([0, 1, 2, 4, 6, 7, 9, 11 ]),
+    1: [3, 5, 8, 10],
+    # 2: [8, 10],
+    # 2: exclude_heads_from_head_indices([0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11]),
+    2: [9, 11],
+    # 3: [0, 6, 7, 11],
+    3: [6, 7, 11],
+    # 3: exclude_heads_from_head_indices([1, 2, 3, 4, 5, 8, 9, 10]),
+
+    4: [4, 11],
+    # 4: [4],
+    5: [0],
+    7: [11],
+    9: [1],
+
+    # 0: exclude_heads_from_head_indices([0, 2, 4]),
+    # 9: [0, 1, 2]
+}
+
 
 # %%
 important_heads = []
@@ -1052,31 +1162,7 @@ run_attention_activation_patching_on_head(
 )
 
 # %% 
-included_indices = {
-    # 5: [0, 8],
-    # 7: [11],
-    # 8: exclude_heads_from_head_indices([2, 3, 4, 5]),
-    # 9: exclude_heads_from_head_indices([0, 4, 5, 6, 7, 8, 9, 10, 11])
-    # 6: exclude_heads_from_head_indices([0, 1, 2, 4, 5, 7, 8]),
-    # 6: [3, 6, 9, 10],
-    # 1: [5],
-    # 1: exclude_heads_from_head_indices([0, 1, 2, 4, 6, 7, 9, 11 ]),
-    1: [3, 5, 8, 10],
-    # 2: [8, 10],
-    # 2: exclude_heads_from_head_indices([0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11]),
-    2: [9, 11],
-    # 3: [0, 6, 7, 11],
-    3: [6, 7, 11],
-    # 3: exclude_heads_from_head_indices([1, 2, 3, 4, 5, 8, 9, 10]),
 
-    4: [4, 11],
-    5: [0],
-    7: [11],
-    9: [1],
-
-    # 0: exclude_heads_from_head_indices([0, 2, 4]),
-    # 9: [0, 1, 2]
-}
 
 
 run_isolated_circuit(
@@ -1142,6 +1228,9 @@ HTML(visualize_attention_patterns(
     # list(range(12)),
     heads,
     # [
+    #     head_index(4, 10),
+    # ],
+    # [
     #     # head_index(0, 1),
     #     # head_index(2, 11),
     #     # head_index(1, 3),
@@ -1150,10 +1239,10 @@ HTML(visualize_attention_patterns(
     #     # head_index(1, 10),
     #     # head_index(3, 11),
     # ],
-    clean_cache,
-    clean_tokens[0],
-    # long_distance_cache,
-    # long_distance_tokens[0],
+    # clean_cache,
+    # clean_tokens[0],
+    long_distance_cache,
+    long_distance_tokens[0],
     "Some cool heads"
 ))
 
@@ -1172,10 +1261,10 @@ HTML(visualize_attention_patterns(
         head_index(7, 11),
         head_index(9, 1)
     ],
-    # clean_cache,
-    # clean_tokens[0],
-    long_distance_cache,
-    long_distance_tokens[0],
+    clean_cache,
+    clean_tokens[0],
+    # long_distance_cache,
+    # long_distance_tokens[0],
     "Some cool heads"
 ))
 
@@ -1251,36 +1340,36 @@ run_zero_ablation_on_attn_head(long_distance_tokens)
 
 
 # %%
-run_activation_patching_on_residual_stream(clean_tokens, period_corrupted_tokens)
+run_activation_patching_on_residual_stream(clean_tokens, prefix_number_corrupted_tokens)
 
 # %%
-run_activation_ablation_on_residual_stream(clean_tokens, period_corrupted_tokens)
-
-
-# %%
-run_activation_patching_on_attn_output(clean_tokens, period_corrupted_tokens)
-
-# %%
-run_activation_patching_on_mlp_output(clean_tokens, period_corrupted_tokens)
-
-# %%
-patched_z_diff = run_activation_patching_on_z_output(clean_tokens, period_corrupted_tokens, return_patch=True)
-
-# %%
-patched_z_diff = run_activation_ablation_on_z_output(clean_tokens, period_corrupted_tokens, return_patch=True)
+run_activation_ablation_on_residual_stream(clean_tokens, prefix_number_corrupted_tokens)
 
 
 # %%
-patched_value_diff = run_activation_patching_on_values(clean_tokens, period_corrupted_tokens, return_patch=True)
+run_activation_patching_on_attn_output(clean_tokens, prefix_number_corrupted_tokens)
 
 # %%
-patched_value_diff = run_activation_ablation_on_values(clean_tokens, period_corrupted_tokens, return_patch=True)
+run_activation_patching_on_mlp_output(clean_tokens, prefix_number_corrupted_tokens)
 
 # %%
-patched_attn_diff = run_activation_patching_on_attn_pattern(clean_tokens, period_corrupted_tokens, return_patch=True)
+patched_z_diff = run_activation_patching_on_z_output(clean_tokens, prefix_number_corrupted_tokens, return_patch=True)
 
 # %%
-patched_attn_diff = run_activation_ablation_on_attn_pattern(clean_tokens, period_corrupted_tokens, return_patch=True)
+patched_z_diff = run_activation_ablation_on_z_output(clean_tokens, prefix_number_corrupted_tokens, return_patch=True)
+
+
+# %%
+patched_value_diff = run_activation_patching_on_values(clean_tokens, prefix_number_corrupted_tokens, return_patch=True)
+
+# %%
+patched_value_diff = run_activation_ablation_on_values(clean_tokens, prefix_number_corrupted_tokens, return_patch=True)
+
+# %%
+patched_attn_diff = run_activation_patching_on_attn_pattern(clean_tokens, prefix_number_corrupted_tokens, return_patch=True)
+
+# %%
+patched_attn_diff = run_activation_ablation_on_attn_pattern(clean_tokens, prefix_number_corrupted_tokens, return_patch=True)
 
 # %%
 HTML(visualize_attention_patterns(
@@ -1622,6 +1711,13 @@ numbered_states = clean_prompts[1]
 
 # %%
 numbered_states
+
+
+
+
+
+# %%
+show_stats_for_string("14. Washington 15. California 16. Sarah")
 
 
 

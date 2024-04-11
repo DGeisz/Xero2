@@ -191,7 +191,7 @@ def get_normalizing_function_for_tokens(clean_tokens=None, corrupted_tokens=None
     
     return normalize_activation
 
-def normalize_ablation_result(activation, base_activation):
+def normalize_corruption_result(activation, base_activation):
     return (base_activation - activation) / (base_activation - FEATURE_BIAS)
 
 
@@ -260,14 +260,14 @@ def run_activation_patching(clean_tokens, corrupted_tokens, hook_name, component
     imshow(
         patched_diff,
         x=prompt_position_labels,
-        title=f"Logit Difference From Patched {component_title}",
+        title=f"Feature Activation Difference From Patched {component_title}",
         labels={"x": "Position", "y": "Layer"},
     )
 
     if return_patch:
         return patched_diff
 
-def run_activation_ablation(clean_tokens, corrupted_tokens, hook_name, component_title, return_patch=False):
+def run_activation_corruption(clean_tokens, corrupted_tokens, hook_name, component_title, return_patch=False):
     _, clean_cache = model.run_with_cache(clean_tokens)
     _, corrupted_cache = model.run_with_cache(corrupted_tokens)
 
@@ -294,7 +294,7 @@ def run_activation_ablation(clean_tokens, corrupted_tokens, hook_name, component
 
             feature_activation = get_linear_feature_activation(layer_9_z_store[0], averaged=True)
 
-            patched_diff[layer, position] = normalize_ablation_result(feature_activation, base_activation)
+            patched_diff[layer, position] = normalize_corruption_result(feature_activation, base_activation)
 
     prompt_position_labels = [
         f"{tok}_{i}" for i, tok in enumerate(model.to_str_tokens(clean_tokens[0]))
@@ -303,7 +303,7 @@ def run_activation_ablation(clean_tokens, corrupted_tokens, hook_name, component
     imshow(
         patched_diff,
         x=prompt_position_labels,
-        title=f"Logit Difference From Ablated {component_title}",
+        title=f"Feature Activation Difference From Corrupted {component_title}",
         labels={"x": "Position", "y": "Layer"},
     )
 
@@ -336,7 +336,7 @@ def run_activation_zero_ablation(clean_tokens, hook_name, component_title, retur
             feature_activation = get_linear_feature_activation(layer_9_z_store[0], averaged=True)
 
             # patched_diff[layer, position] = (base_activation - feature_activation)
-            patched_diff[layer, position] = normalize_ablation_result(feature_activation, base_activation)
+            patched_diff[layer, position] = normalize_corruption_result(feature_activation, base_activation)
 
     prompt_position_labels = [
         f"{tok}_{i}" for i, tok in enumerate(model.to_str_tokens(clean_tokens[0]))
@@ -345,7 +345,7 @@ def run_activation_zero_ablation(clean_tokens, hook_name, component_title, retur
     imshow(
         patched_diff,
         x=prompt_position_labels,
-        title=f"Logit Difference From Zero Ablated {component_title}",
+        title=f"Feature Activation Difference From Zero Ablated {component_title}",
         labels={"x": "Position", "y": "Layer"},
     )
 
@@ -356,9 +356,9 @@ run_activation_patching_on_residual_stream = partial(run_activation_patching, ho
 run_activation_patching_on_attn_output = partial(run_activation_patching, hook_name="attn_out", component_title="Attention Output")
 run_activation_patching_on_mlp_output = partial(run_activation_patching, hook_name="mlp_out", component_title="MLP Output")
 
-run_activation_ablation_on_residual_stream = partial(run_activation_ablation, hook_name="resid_pre", component_title="Residual Stream")
-run_activation_ablation_on_attn_output = partial(run_activation_ablation, hook_name="attn_out", component_title="Attention Output")
-run_activation_ablation_on_mlp_output = partial(run_activation_ablation, hook_name="mlp_out", component_title="MLP Output")
+run_activation_corruption_on_residual_stream = partial(run_activation_corruption, hook_name="resid_pre", component_title="Residual Stream")
+run_activation_corruption_on_attn_output = partial(run_activation_corruption, hook_name="attn_out", component_title="Attention Output")
+run_activation_corruption_on_mlp_output = partial(run_activation_corruption, hook_name="mlp_out", component_title="MLP Output")
 
 
 run_zero_ablation_on_residual_stream = partial(run_activation_zero_ablation, hook_name="resid_pre", component_title="Residual Stream")
@@ -441,7 +441,7 @@ def run_attention_activation_patching(clean_tokens, corrupted_tokens, patching_f
 
     imshow(
         patched_head_diff,
-        title=f"Logit Difference From Patched {component_title}",
+        title=f"Feature Activation Difference From Patched {component_title}",
         labels={"x": "Head", "y": "Layer"},
     )
 
@@ -449,7 +449,7 @@ def run_attention_activation_patching(clean_tokens, corrupted_tokens, patching_f
         return patched_head_diff
 
 
-def run_attention_activation_ablation(clean_tokens, corrupted_tokens, patching_function, hook_name, component_title, return_patch=False):
+def run_attention_activation_corruption(clean_tokens, corrupted_tokens, patching_function, hook_name, component_title, return_patch=False):
     _, clean_cache = model.run_with_cache(clean_tokens)
     _, corrupted_cache = model.run_with_cache(corrupted_tokens)
 
@@ -478,11 +478,11 @@ def run_attention_activation_ablation(clean_tokens, corrupted_tokens, patching_f
 
             feature_activation = get_linear_feature_activation(layer_9_z_store[0], averaged=True)
 
-            patched_head_diff[layer, head_index] = normalize_ablation_result(feature_activation, base_value)
+            patched_head_diff[layer, head_index] = normalize_corruption_result(feature_activation, base_value)
 
     imshow(
         patched_head_diff,
-        title=f"Logit Difference From Ablated {component_title}",
+        title=f"Feature Activation Difference From Corrupted {component_title}",
         labels={"x": "Head", "y": "Layer"},
     )
 
@@ -517,13 +517,13 @@ def run_attention_zero_ablation(clean_tokens, patching_function, hook_name, comp
 
             feature_activation = get_linear_feature_activation(layer_9_z_store[0], averaged=True)
 
-            head_diff[layer, head_index] = normalize_ablation_result(feature_activation, base_value)
+            head_diff[layer, head_index] = normalize_corruption_result(feature_activation, base_value)
 
             # head_diff[layer, head_index] = base_value - feature_activation
 
     imshow(
         head_diff,
-        title=f"Logit Difference From Zero-Ablated {component_title}",
+        title=f"Feature Activation Difference From Zero-Ablated {component_title}",
         labels={"x": "Head", "y": "Layer"},
     )
 
@@ -534,9 +534,9 @@ run_activation_patching_on_z_output = partial(run_attention_activation_patching,
 run_activation_patching_on_values = partial(run_attention_activation_patching, patching_function=patch_head_vector, hook_name="v", component_title="Attention Values")
 run_activation_patching_on_attn_pattern = partial(run_attention_activation_patching, patching_function=patch_head_pattern, hook_name="attn", component_title="Attention Pattern")
 
-run_activation_ablation_on_z_output = partial(run_attention_activation_ablation, patching_function=patch_head_vector, hook_name="z", component_title="Z Output")
-run_activation_ablation_on_values = partial(run_attention_activation_ablation, patching_function=patch_head_vector, hook_name="v", component_title="Attention Values")
-run_activation_ablation_on_attn_pattern = partial(run_attention_activation_ablation, patching_function=patch_head_pattern, hook_name="attn", component_title="Attention Pattern")
+run_activation_corruption_on_z_output = partial(run_attention_activation_corruption, patching_function=patch_head_vector, hook_name="z", component_title="Z Output")
+run_activation_corruption_on_values = partial(run_attention_activation_corruption, patching_function=patch_head_vector, hook_name="v", component_title="Attention Values")
+run_activation_corruption_on_attn_pattern = partial(run_attention_activation_corruption, patching_function=patch_head_pattern, hook_name="attn", component_title="Attention Pattern")
 
 
 # run_zero_ablation_on_z_output = partial(run_attention_zero_ablation, patching_function=zero_ablate_head_vector, hook_name="z", component_title="Z Output")
@@ -545,12 +545,12 @@ run_activation_ablation_on_attn_pattern = partial(run_attention_activation_ablat
 run_zero_ablation_on_attn_head = partial(run_attention_zero_ablation, patching_function=zero_ablate_head_pattern, hook_name="attn", component_title="Attention Pattern")
 
 # %%
-def ablate_activation(original_comp: Float[torch.Tensor, 'batch pos head_index d_head'], hook, pos, head_index, replace_cache):
+def corrupt_activation(original_comp: Float[torch.Tensor, 'batch pos head_index d_head'], hook, pos, head_index, replace_cache):
     original_comp[:, pos, head_index, :] = replace_cache[hook.name][:, pos, head_index, :]
 
     return original_comp
 
-def run_attention_activation_ablation_on_head(clean_tokens, corrupted_tokens, heads: List[Tuple[int, int]], return_patch=False):
+def run_attention_activation_corruption_on_head(clean_tokens, corrupted_tokens, heads: List[Tuple[int, int]], return_patch=False):
     _, clean_cache = model.run_with_cache(clean_tokens)
     _, corrupted_cache = model.run_with_cache(corrupted_tokens)
 
@@ -564,7 +564,7 @@ def run_attention_activation_ablation_on_head(clean_tokens, corrupted_tokens, he
         for position in range(clean_tokens.shape[1]):
             layer_9_z_store = []
 
-            hook_fn = partial(ablate_activation, head_index=head_index, pos=position, replace_cache=corrupted_cache)
+            hook_fn = partial(corrupt_activation, head_index=head_index, pos=position, replace_cache=corrupted_cache)
             fetch_fn = partial(fetch_layer_9_z_activation, store=layer_9_z_store)
 
             model.run_with_hooks(
@@ -578,7 +578,7 @@ def run_attention_activation_ablation_on_head(clean_tokens, corrupted_tokens, he
 
             feature_activation = get_linear_feature_activation(layer_9_z_store[0], averaged=True)
 
-            head_diff[i, position] = normalize_ablation_result(feature_activation, base_value)
+            head_diff[i, position] = normalize_corruption_result(feature_activation, base_value)
 
 
     prompt_position_labels = [
@@ -591,7 +591,7 @@ def run_attention_activation_ablation_on_head(clean_tokens, corrupted_tokens, he
         head_diff,
         x=prompt_position_labels,
         y=head_labels,
-        title=f"Logit Difference From Ablated Attention Head",
+        title=f"Feature Activation Difference From Corrupted Attention Head",
         labels={"x": "Position", "y": "Head"},
     )
 
@@ -611,7 +611,7 @@ def run_attention_activation_patching_on_head(clean_tokens, corrupted_tokens, he
         for position in range(clean_tokens.shape[1]):
             layer_9_z_store = []
 
-            hook_fn = partial(ablate_activation, head_index=head_index, pos=position, replace_cache=clean_cache)
+            hook_fn = partial(corrupt_activation, head_index=head_index, pos=position, replace_cache=clean_cache)
             fetch_fn = partial(fetch_layer_9_z_activation, store=layer_9_z_store)
 
             model.run_with_hooks(
@@ -638,7 +638,7 @@ def run_attention_activation_patching_on_head(clean_tokens, corrupted_tokens, he
         head_diff,
         x=prompt_position_labels,
         y=head_labels,
-        title=f"Logit Difference From Patched Attention Head",
+        title=f"Feature Activation Difference From Patched Attention Head",
         labels={"x": "Position", "y": "Head"},
     )
 
@@ -814,27 +814,23 @@ def print_prompt_stats(prompts, model=model):
 
 # %%
 def run_full_analysis(clean_tokens, corrupted_tokens):
-    run_activation_ablation_on_residual_stream(clean_tokens, corrupted_tokens)
+    run_activation_corruption_on_residual_stream(clean_tokens, corrupted_tokens)
     run_activation_patching_on_residual_stream(clean_tokens, corrupted_tokens)
 
     run_activation_patching_on_attn_output(clean_tokens, corrupted_tokens)
-    run_activation_ablation_on_attn_output(clean_tokens, corrupted_tokens)
+    run_activation_corruption_on_attn_output(clean_tokens, corrupted_tokens)
 
     run_activation_patching_on_mlp_output(clean_tokens, corrupted_tokens)
-    run_activation_ablation_on_mlp_output(clean_tokens, corrupted_tokens)
+    run_activation_corruption_on_mlp_output(clean_tokens, corrupted_tokens)
 
     run_activation_patching_on_z_output(clean_tokens, corrupted_tokens, return_patch=True)
-    run_activation_ablation_on_z_output(clean_tokens, corrupted_tokens, return_patch=True)
+    run_activation_corruption_on_z_output(clean_tokens, corrupted_tokens, return_patch=True)
 
     run_activation_patching_on_values(clean_tokens, corrupted_tokens, return_patch=True)
-    run_activation_ablation_on_values(clean_tokens, corrupted_tokens, return_patch=True)
+    run_activation_corruption_on_values(clean_tokens, corrupted_tokens, return_patch=True)
 
     run_activation_patching_on_attn_pattern(clean_tokens, corrupted_tokens, return_patch=True)
-    run_activation_ablation_on_attn_pattern(clean_tokens, corrupted_tokens, return_patch=True)
-
-
-
-
+    run_activation_corruption_on_attn_pattern(clean_tokens, corrupted_tokens, return_patch=True)
 
 
 # %%
@@ -983,18 +979,21 @@ time_corrupted_tokens = model.to_tokens(time_corrupted_prompts, prepend_bos=True
 print_prompt_stats(time_corrupted_prompts)
 
 # %%
-run_full_analysis(long_distance_tokens, long_distance_prefix_name_corrupted_tokens)
+run_full_analysis(
+    long_distance_tokens, 
+    long_distance_prefix_name_corrupted_tokens
+)
 
 # %%
-run_attention_activation_ablation_on_head(
+run_attention_activation_corruption_on_head(
     long_distance_tokens, 
     long_distance_prefix_name_corrupted_tokens,
     [
-        (1, 5),
-        (4, 4), 
-        (4, 11), 
-        # (5, 0), 
-        # (7, 11), 
+        # (1, 5),
+        # (4, 4), 
+        # (4, 11), 
+        (5, 0), 
+        (7, 11), 
         # (9, 1)
     ]
 )
@@ -1003,12 +1002,16 @@ run_attention_activation_ablation_on_head(
 run_attention_activation_patching_on_head(
     long_distance_tokens, 
     long_distance_prefix_name_corrupted_tokens,
+    # clean_tokens,
+    # # random_prefix_corrupted_tokens,
+    # # prefix_number_corrupted_tokens,
+    # number_corrupted_tokens,
     [
-        (1, 5),
-        (4, 4), 
-        (4, 11), 
-        # (5, 0), 
-        # (7, 11), 
+        # (1, 5),
+        # (4, 4), 
+        # (4, 11), 
+        (5, 0), 
+        (7, 11), 
         # (9, 1)
     ]
 )
@@ -1019,16 +1022,16 @@ run_attention_activation_patching_on_head(
 run_activation_patching_on_residual_stream(clean_tokens, random_prefix_corrupted_tokens)
 
 # %%
-run_activation_ablation_on_residual_stream(simple_tokens, time_corrupted_tokens)
+run_activation_corruption_on_residual_stream(simple_tokens, time_corrupted_tokens)
 
 # %%
-patched_z_diff = run_activation_ablation_on_z_output(simple_tokens, time_corrupted_tokens, return_patch=True)
+patched_z_diff = run_activation_corruption_on_z_output(simple_tokens, time_corrupted_tokens, return_patch=True)
 
 # %%
 run_full_analysis(simple_tokens, simple_corrupted_tokens)
 
 # %%
-run_activation_ablation_on_residual_stream(long_distance_tokens, long_distance_prefix_name_corrupted_tokens)
+run_activation_corruption_on_residual_stream(long_distance_tokens, long_distance_prefix_name_corrupted_tokens)
 # %%
 run_activation_patching_on_residual_stream(long_distance_tokens, long_distance_prefix_name_corrupted_tokens)
 
@@ -1040,13 +1043,13 @@ run_activation_patching_on_mlp_output(long_distance_tokens, long_distance_prefix
 
 # %%
 
-run_activation_ablation_on_mlp_output(long_distance_tokens, long_distance_prefix_name_corrupted_tokens)
+run_activation_corruption_on_mlp_output(long_distance_tokens, long_distance_prefix_name_corrupted_tokens)
 
 # %%
 patched_z_diff = run_activation_patching_on_z_output(long_distance_tokens, long_distance_prefix_name_corrupted_tokens, return_patch=True)
 
 # %%
-patched_z_diff = run_activation_ablation_on_z_output(long_distance_tokens, long_distance_prefix_name_corrupted_tokens, return_patch=True)
+patched_z_diff = run_activation_corruption_on_z_output(long_distance_tokens, long_distance_prefix_name_corrupted_tokens, return_patch=True)
 
 # %%
 run_zero_ablation_on_attn_head(clean_tokens)
@@ -1056,14 +1059,14 @@ run_zero_ablation_on_attn_head(clean_tokens)
 patched_value_diff = run_activation_patching_on_values(long_distance_tokens, long_distance_prefix_name_corrupted_tokens, return_patch=True)
 
 # %%
-patched_value_diff = run_activation_ablation_on_values(long_distance_tokens, long_distance_prefix_name_corrupted_tokens, return_patch=True)
+patched_value_diff = run_activation_corruption_on_values(long_distance_tokens, long_distance_prefix_name_corrupted_tokens, return_patch=True)
 
 
 # %%
 patched_attn_diff = run_activation_patching_on_attn_pattern(long_distance_tokens, long_distance_prefix_name_corrupted_tokens, return_patch=True)
 
 # %%
-patched_attn_diff = run_activation_ablation_on_attn_pattern(long_distance_tokens, long_distance_prefix_name_corrupted_tokens, return_patch=True)
+patched_attn_diff = run_activation_corruption_on_attn_pattern(long_distance_tokens, long_distance_prefix_name_corrupted_tokens, return_patch=True)
 
 # %%
 included_indices = {
@@ -1107,7 +1110,7 @@ for i in included_indices:
 
 
 # %%
-run_attention_activation_ablation_on_head(
+run_attention_activation_corruption_on_head(
     long_distance_tokens, 
     long_distance_prefix_name_corrupted_tokens, 
 
@@ -1272,7 +1275,7 @@ HTML(visualize_attention_patterns(
 
 # %%
 
-run_activation_ablation_on_residual_stream(long_distance_tokens, long_distance_second_number_corrupted_tokens)
+run_activation_corruption_on_residual_stream(long_distance_tokens, long_distance_second_number_corrupted_tokens)
 # %%
 run_activation_patching_on_residual_stream(long_distance_tokens, long_distance_second_number_corrupted_tokens)
 
@@ -1286,13 +1289,13 @@ run_activation_patching_on_mlp_output(long_distance_tokens, long_distance_second
 patched_z_diff = run_activation_patching_on_z_output(long_distance_tokens, long_distance_second_number_corrupted_tokens, return_patch=True)
 
 # %%
-patched_z_diff = run_activation_ablation_on_z_output(long_distance_tokens, long_distance_second_number_corrupted_tokens, return_patch=True)
+patched_z_diff = run_activation_corruption_on_z_output(long_distance_tokens, long_distance_second_number_corrupted_tokens, return_patch=True)
 
 # %%
 patched_value_diff = run_activation_patching_on_values(long_distance_tokens, long_distance_second_number_corrupted_tokens, return_patch=True)
 
 # %%
-patched_value_diff = run_activation_ablation_on_values(long_distance_tokens, long_distance_second_number_corrupted_tokens, return_patch=True)
+patched_value_diff = run_activation_corruption_on_values(long_distance_tokens, long_distance_second_number_corrupted_tokens, return_patch=True)
 
 
 # %%
@@ -1302,7 +1305,7 @@ patched_attn_diff = run_activation_patching_on_attn_pattern(long_distance_tokens
 
 # %%
 
-run_activation_ablation_on_residual_stream(long_distance_tokens, long_distance_prefix_name_corrupted_tokens)
+run_activation_corruption_on_residual_stream(long_distance_tokens, long_distance_prefix_name_corrupted_tokens)
 # %%
 run_activation_patching_on_residual_stream(long_distance_tokens, long_distance_prefix_name_corrupted_tokens)
 
@@ -1316,7 +1319,7 @@ run_activation_patching_on_mlp_output(long_distance_tokens, long_distance_prefix
 patched_z_diff = run_activation_patching_on_z_output(long_distance_tokens, long_distance_prefix_name_corrupted_tokens, return_patch=True)
 
 # %%
-patched_z_diff = run_activation_ablation_on_z_output(long_distance_tokens, long_distance_prefix_name_corrupted_tokens, return_patch=True)
+patched_z_diff = run_activation_corruption_on_z_output(long_distance_tokens, long_distance_prefix_name_corrupted_tokens, return_patch=True)
 
 # %%
 patched_value_diff = run_activation_patching_on_values(long_distance_tokens, long_distance_prefix_name_corrupted_tokens, return_patch=True)
@@ -1343,7 +1346,7 @@ run_zero_ablation_on_attn_head(long_distance_tokens)
 run_activation_patching_on_residual_stream(clean_tokens, prefix_number_corrupted_tokens)
 
 # %%
-run_activation_ablation_on_residual_stream(clean_tokens, prefix_number_corrupted_tokens)
+run_activation_corruption_on_residual_stream(clean_tokens, prefix_number_corrupted_tokens)
 
 
 # %%
@@ -1356,20 +1359,20 @@ run_activation_patching_on_mlp_output(clean_tokens, prefix_number_corrupted_toke
 patched_z_diff = run_activation_patching_on_z_output(clean_tokens, prefix_number_corrupted_tokens, return_patch=True)
 
 # %%
-patched_z_diff = run_activation_ablation_on_z_output(clean_tokens, prefix_number_corrupted_tokens, return_patch=True)
+patched_z_diff = run_activation_corruption_on_z_output(clean_tokens, prefix_number_corrupted_tokens, return_patch=True)
 
 
 # %%
 patched_value_diff = run_activation_patching_on_values(clean_tokens, prefix_number_corrupted_tokens, return_patch=True)
 
 # %%
-patched_value_diff = run_activation_ablation_on_values(clean_tokens, prefix_number_corrupted_tokens, return_patch=True)
+patched_value_diff = run_activation_corruption_on_values(clean_tokens, prefix_number_corrupted_tokens, return_patch=True)
 
 # %%
 patched_attn_diff = run_activation_patching_on_attn_pattern(clean_tokens, prefix_number_corrupted_tokens, return_patch=True)
 
 # %%
-patched_attn_diff = run_activation_ablation_on_attn_pattern(clean_tokens, prefix_number_corrupted_tokens, return_patch=True)
+patched_attn_diff = run_activation_corruption_on_attn_pattern(clean_tokens, prefix_number_corrupted_tokens, return_patch=True)
 
 # %%
 HTML(visualize_attention_patterns(
@@ -1477,7 +1480,7 @@ HTML(visualize_attention_patterns(
     ],
     long_distance_cache,
     long_distance_tokens[0],
-    f"Top {top_k} Positive Logit Attribution Heads",
+    f"Top {top_k} Positive Feature Activation Attribution Heads",
 ))
 
 # %%
@@ -1583,7 +1586,7 @@ for layer in range(model.cfg.n_layers):
 imshow(
     patched_attn_diff,
     x=prompt_position_labels,
-    title="Logit Difference From Patched Attention Layer",
+    title="Feature Activation Difference From Patched Attention Layer",
     labels={"x": "Position", "y": "Layer"},
 )
 
@@ -1591,7 +1594,7 @@ imshow(
 imshow(
     patched_mlp_diff,
     x=prompt_position_labels,
-    title="Logit Difference From Patched MLP Layer",
+    title="Feature Activation Difference From Patched MLP Layer",
     labels={"x": "Position", "y": "Layer"},
 )
 
@@ -1717,7 +1720,36 @@ numbered_states
 
 
 # %%
-show_stats_for_string("14. Washington 15. California 16. Sarah")
+show_stats_for_string("14. Washington 15. California 16. Oregon")
+
+# %%
+show_stats_for_string("14. Washington 15. California 16. Cynthia")
+
+# %%
+show_stats_for_string("14. Robert 15. Jeff 16. Daniel")
+
+# %%
+show_stats_for_string("14. Ocean 15. Lake 16. River")
+
+
+# %%
+show_stats_for_string("14. Bike 15. Plane 16. Car")
+
+# %%
+show_stats_for_string("14. April 15. March 16. May")
+
+# %%
+show_stats_for_string("14. March 15. April 16. May")
+
+# %%
+show_stats_for_string("14. Jeff 15. then we have much later 16. Sam")
+
+# %%
+show_stats_for_string("14. Oregon 15. then we have much later 16. Sam")
+
+# %%
+show_stats_for_string("Jeff 15. then we have much later 16. Sam")
+
 
 
 

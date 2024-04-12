@@ -8,6 +8,8 @@
 
 This is where I did the actual application project. This contains two versions of effectively the same code. [successor_feature_exploration\_\_raw.py](/neel_application/successor_feature_exploration__raw.py) contains the final messy version of the code after I finished the project. [successor_feature_exploration\_\_clean.py](/neel_application/successor_feature_exploration__clean.py) contains a version of the same code that's cleaned up and most approachable for anyone who wants to replicate my results.
 
+Here's the application project [write-up.](https://docs.google.com/document/d/1qJCWxkRJd-bOIUF4FAPZtnERw4YN5uxx-zZuSOHWp8c/edit?usp=sharing)
+
 
 ### [Exploratory Notebooks:](/exploratory_notebooks/)
 

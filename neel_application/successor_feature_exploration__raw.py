@@ -1,3 +1,8 @@
+# This is a notebook that contains the final state of the code when I finished the project.
+# As such, especially at the bottom, the code is rather messy and not well-organized.  For 
+# the cleaned-up code, see neel_application/successor_feature_exploration__clean.py
+#
+
 # %%
 %load_ext autoreload
 %autoreload 2
@@ -691,7 +696,8 @@ def run_isolated_circuit(
     tokens, 
     allowed_heads: Dict[int, List[int]], 
     passthrough_layers: List[int],
-    zero_ablated_heads: Dict[int, List[int]] = {}
+    zero_ablated_heads: Dict[int, List[int]] = {},
+    return_values=False
 ):
     _, cache = model.run_with_cache(tokens)
 
@@ -719,7 +725,18 @@ def run_isolated_circuit(
 
     isolated_activation = get_linear_feature_activation(layer_9_z_store[0], averaged=False)
 
-    return isolated_activation, base_activation
+
+
+    print("Isolated Activation:")
+    print("Avg Value:", isolated_activation.mean().item().__round__(2))
+    print("All Values:", [float(f"{n:.2f}") for n in isolated_activation.tolist()])
+    print()
+    print("Base Activation:")
+    print("Avg Value:", base_activation.mean().item().__round__(2))
+    print("All Values:", [float(f"{n:.2f}") for n in base_activation.tolist()])
+
+    if return_values:
+        return isolated_activation, base_activation
 
 
 # %%
@@ -806,11 +823,14 @@ def print_prompt_stats(prompts, model=model):
 
     activation = get_linear_feature_activation_from_cache(cache, averaged=True)
 
-    print("Example prompt:", prompts[0])
-    print_prompts(prompts)
+    for prompt in prompts:
+        print(prompt)
+    # print("Example prompt:", prompts[0])
+    # print_prompts(prompts)
     print()
 
-    print("Activations:", activation.item(), get_linear_feature_activation_from_cache(cache, averaged=False))
+    print("Avg Activation:", f"{activation.item():.2f}")
+    print("Activations:", [float(f"{n:.2f}") for n in get_linear_feature_activation_from_cache(cache, averaged=False).tolist()])
 
 # %%
 def run_full_analysis(clean_tokens, corrupted_tokens):
@@ -981,19 +1001,19 @@ print_prompt_stats(time_corrupted_prompts)
 # %%
 run_full_analysis(
     long_distance_tokens, 
-    long_distance_prefix_name_corrupted_tokens
+    long_distance_last_number_corrupted_tokens
 )
 
 # %%
 run_attention_activation_corruption_on_head(
     long_distance_tokens, 
-    long_distance_prefix_name_corrupted_tokens,
+    long_distance_last_number_corrupted_tokens,
     [
-        # (1, 5),
-        # (4, 4), 
+        (1, 5),
+        (4, 4), 
         # (4, 11), 
-        (5, 0), 
-        (7, 11), 
+        # (5, 0), 
+        # (7, 11), 
         # (9, 1)
     ]
 )
@@ -1001,17 +1021,13 @@ run_attention_activation_corruption_on_head(
 # %%
 run_attention_activation_patching_on_head(
     long_distance_tokens, 
-    long_distance_prefix_name_corrupted_tokens,
-    # clean_tokens,
-    # # random_prefix_corrupted_tokens,
-    # # prefix_number_corrupted_tokens,
-    # number_corrupted_tokens,
+    long_distance_last_number_corrupted_tokens,
     [
-        # (1, 5),
-        # (4, 4), 
+        (1, 5),
+        (4, 4), 
         # (4, 11), 
-        (5, 0), 
-        (7, 11), 
+        # (5, 0), 
+        # (7, 11), 
         # (9, 1)
     ]
 )
@@ -1069,33 +1085,42 @@ patched_attn_diff = run_activation_patching_on_attn_pattern(long_distance_tokens
 patched_attn_diff = run_activation_corruption_on_attn_pattern(long_distance_tokens, long_distance_prefix_name_corrupted_tokens, return_patch=True)
 
 # %%
-included_indices = {
-    # 5: [0, 8],
-    # 7: [11],
-    # 8: exclude_heads_from_head_indices([2, 3, 4, 5]),
-    # 9: exclude_heads_from_head_indices([0, 4, 5, 6, 7, 8, 9, 10, 11])
-    # 6: exclude_heads_from_head_indices([0, 1, 2, 4, 5, 7, 8]),
-    # 6: [3, 6, 9, 10],
-    # 1: [5],
-    # 1: exclude_heads_from_head_indices([0, 1, 2, 4, 6, 7, 9, 11 ]),
-    1: [3, 5, 8, 10],
-    # 2: [8, 10],
-    # 2: exclude_heads_from_head_indices([0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11]),
-    2: [9, 11],
-    # 3: [0, 6, 7, 11],
-    3: [6, 7, 11],
-    # 3: exclude_heads_from_head_indices([1, 2, 3, 4, 5, 8, 9, 10]),
+# included_indices = {
+#     # 5: [0, 8],
+#     # 7: [11],
+#     # 8: exclude_heads_from_head_indices([2, 3, 4, 5]),
+#     # 9: exclude_heads_from_head_indices([0, 4, 5, 6, 7, 8, 9, 10, 11])
+#     # 6: exclude_heads_from_head_indices([0, 1, 2, 4, 5, 7, 8]),
+#     # 6: [3, 6, 9, 10],
+#     # 1: [5],
+#     # 1: exclude_heads_from_head_indices([0, 1, 2, 4, 6, 7, 9, 11 ]),
+#     1: [3, 5, 8, 10],
+#     # 2: [8, 10],
+#     # 2: exclude_heads_from_head_indices([0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11]),
+#     2: [9, 11],
+#     # 3: [0, 6, 7, 11],
+#     3: [6, 7, 11],
+#     # 3: exclude_heads_from_head_indices([1, 2, 3, 4, 5, 8, 9, 10]),
 
+#     4: [4, 11],
+#     # 4: [4],
+#     5: [0],
+#     7: [11],
+#     9: [1],
+
+#     # 0: exclude_heads_from_head_indices([0, 2, 4]),
+#     # 9: [0, 1, 2]
+# }
+# %%
+included_indices = {
+    1: [3, 5, 8, 10],
+    2: [9, 11],
+    3: [6, 7, 11],
     4: [4, 11],
-    # 4: [4],
     5: [0],
     7: [11],
     9: [1],
-
-    # 0: exclude_heads_from_head_indices([0, 2, 4]),
-    # 9: [0, 1, 2]
 }
-
 
 # %%
 important_heads = []
@@ -1168,9 +1193,8 @@ run_attention_activation_patching_on_head(
 
 
 
-run_isolated_circuit(
-    # clean_tokens, 
-    long_distance_tokens,
+run_isolated_circuit(long_distance_tokens, 
+    # long_distance_tokens,
     included_indices,
     # {
     # # 5: [0, 8],
@@ -1204,6 +1228,8 @@ run_isolated_circuit(
         # 0: [1]
     }
 )
+
+
 # %%
 
 # run_isolated_circuit(long_distance_tokens, {
@@ -1229,7 +1255,11 @@ for i in included_indices:
 
 HTML(visualize_attention_patterns(
     # list(range(12)),
-    heads,
+    # heads,
+    [
+        head_index(0, 2),
+        head_index(0, 10)
+    ],
     # [
     #     head_index(4, 10),
     # ],
@@ -1242,16 +1272,22 @@ HTML(visualize_attention_patterns(
     #     # head_index(1, 10),
     #     # head_index(3, 11),
     # ],
-    # clean_cache,
-    # clean_tokens[0],
-    long_distance_cache,
-    long_distance_tokens[0],
+    clean_cache,
+    clean_tokens[0],
+    # long_distance_cache,
+    # long_distance_tokens[0],
     "Some cool heads"
 ))
 
 
 
 # %%
+little = ["14. Missouri dog. Michigan 16. Virginia"]
+little_t = model.to_tokens(little, prepend_bos=True)
+
+_, little_cache = model.run_with_cache(little_t)
+
+
 HTML(visualize_attention_patterns(
     [
         head_index(1, 5),
@@ -1264,12 +1300,18 @@ HTML(visualize_attention_patterns(
         head_index(7, 11),
         head_index(9, 1)
     ],
-    clean_cache,
-    clean_tokens[0],
+    little_cache,
+    little_t[0],
+    # clean_cache,
+    # clean_tokens[0],
     # long_distance_cache,
     # long_distance_tokens[0],
     "Some cool heads"
 ))
+
+# %%
+show_stats_for_string(little[0])
+
 
 
 
@@ -1737,6 +1779,10 @@ show_stats_for_string("14. Bike 15. Plane 16. Car")
 
 # %%
 show_stats_for_string("14. April 15. March 16. May")
+
+# %%
+show_stats_for_string("14. Daniel 15. Jeff 16. Illinois")
+
 
 # %%
 show_stats_for_string("14. March 15. April 16. May")

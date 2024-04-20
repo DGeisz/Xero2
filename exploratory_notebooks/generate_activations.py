@@ -45,7 +45,7 @@ site_to_size = {
 
 
 def post_init_cfg(cfg):
-    cfg["model_batch_size"] = cfg["batch_size"] // cfg["seq_len"] * 16
+    cfg["model_batch_size"] = cfg["batch_size"] // cfg["seq_len"]
     cfg["buffer_size"] = cfg["batch_size"] * cfg["buffer_mult"]
     cfg["buffer_batches"] = cfg["buffer_size"] // cfg["seq_len"]
     cfg["act_name"] = utils.get_act_name(cfg["site"], cfg["layer"])
@@ -299,6 +299,9 @@ class Buffer:
 # %%
 def replacement_hook(mlp_post, hook, encoder):
     mlp_post_reconstr = encoder(mlp_post)[1]
+
+    print(mlp_post_reconstr.shape, mlp_post.shape)
+
     return mlp_post_reconstr
 
 

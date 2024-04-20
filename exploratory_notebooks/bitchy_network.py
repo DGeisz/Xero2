@@ -24,21 +24,52 @@ DTYPES = {"fp32": torch.float32, "fp16": torch.float16, "bf16": torch.bfloat16}
 
 
 class BitchyNetwork(nn.Module):
-    def __init__(self, cfg, num_features: int, num_winners: int):
+    batch_size = None
+    width = None
+
+    def __init__(self, cfg, num_features: int, num_winners: int, buffer):
         super().__init__()
+        self.num_features = num_features
 
         d_mlp = cfg["d_mlp"]
-        dtype = DTYPES[cfg["enc_dtype"]]
+        self.dtype = DTYPES[cfg["enc_dtype"]]
 
         self.num_winners = num_winners
+        self._buffer = buffer
 
         self.W = nn.Parameter(
-            torch.nn.init.kaiming_uniform_(
-                torch.empty(num_features, d_mlp, dtype=dtype)
-            )
+            self._init_weights()
+            # torch.nn.init.kaiming_uniform_(
+            #     torch.empty(num_features, d_mlp, dtype=dtype)
+            # )
         )
 
         self.to(cfg["device"])
+
+    def random_data_batch(self):
+        data = self._buffer.next()
+
+        if self.batch_size is None:
+            self.batch_size = data.shape[0]
+
+        return data
+
+    def _init_weights(self):
+        self.batch = 0
+
+        if not self.width:
+            _, width = self.random_data_batch().shape
+            self.width = width
+
+        all_data = []
+
+        for _ in range((self.num_features // self.batch_size) + 1):
+            all_data.append(self.random_data_batch())
+
+        features = t.cat(all_data, dim=0)[: self.num_features, : self.width]
+        features = features / features.norm(dim=-1, keepdim=True)
+
+        return features.to(self.dtype)
 
     def forward(self, x):
         raw_output = einops.einsum(x, self.W, "n d, f d -> n f")

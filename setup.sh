@@ -28,3 +28,7 @@ echo "conda activate arena-env" >> ~/.bashrc
 
 # Activate the Conda environment
 source ~/miniconda3/bin/activate arena-env
+
+git config --global user.email "dannygeisz@berkeley.edu"
+git config --global user.name "Danny"
+git config --global credential.helper store

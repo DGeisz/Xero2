@@ -13,7 +13,7 @@ import einops
 buffer = Buffer(cfg)
 
 # %%
-class GatedAutoEncoder(nn.Module):
+class AnthroGatedSAE(nn.Module):
     def __init__(self, cfg, n_features=5000, l1_coeff=None):
         super().__init__()
 
@@ -73,31 +73,20 @@ class GatedAutoEncoder(nn.Module):
         
 
 
-    # def gated_sae(self, x): # W_gate, b_gate, W_mag, b_mag, W_dec, b_dec
-    #     x_center = x - self.b_dec
-
-    #     feature_mags = F.relu(x_center @ self.W_mag + self.b_enc)
-
-    #     active_features = torch.zeros_like(feature_mags)
-
-    #     active_features[(x_center @ self.W_enc_gate + self.b_enc_gate) > 0] = 1
-
-    #     return (active_features * feature_mags) @ self.W_dec + self.b_dec
 
     def forward(self, x):
         reconstruction, pre_gate_hidden = self.gated_sae(x)
 
         # Reconstruction Loss
-        # gated_sae_loss = (reconstruction - x).pow(2).sum()
-        # l2_loss = F.mse_loss(reconstruction, x, reduction='mean')   
         l2_loss = (reconstruction - x).pow(2).sum(-1).mean(0)
 
-        # gated_sae_loss = F.mse_loss(reconstruction, x, reduction='mean')
         gated_sae_loss = l2_loss.clone()
 
         # L1 loss
         gate_magnitude = F.relu(pre_gate_hidden)
-        l1_loss = self.l1_coeff * gate_magnitude.sum()
+
+        # l1_loss = self.l1_coeff * gate_magnitude.sum()
+        l1_loss = self.l1_coeff * (gate_magnitude * self.W_dec.norm(dim=-1).unsqueeze(0)).sum()
         l0 = (gate_magnitude > 0).sum() / x.shape[0]
 
         gated_sae_loss += l1_loss
@@ -111,38 +100,35 @@ class GatedAutoEncoder(nn.Module):
         return gated_sae_loss, l2_loss, l1_loss, auxiliary_loss, l0
 
 
-    # def forward(self, x):
-        # x_cent = x - self.b_dec
-        # acts = F.relu(x_cent @ self.W_gate + self.b_enc)
-
-
-        # x_reconstruct = acts @ self.W_dec + self.b_dec
-        # l2_loss = (x_reconstruct.float() - x.float()).pow(2).sum(-1).mean(0)
-        # l1_loss = self.l1_coeff * (acts.float().abs().sum())
-        # loss = l2_loss + l1_loss
-        # return loss, x_reconstruct, acts, l2_loss, l1_loss
-
-    @torch.no_grad()
-    def make_decoder_weights_and_grad_unit_norm(self):
-        W_dec_normed = self.W_dec / self.W_dec.norm(dim=-1, keepdim=True)
-        W_dec_grad_proj = (self.W_dec.grad * W_dec_normed).sum(
-            -1, keepdim=True
-        ) * W_dec_normed
-        self.W_dec.grad -= W_dec_grad_proj
-        # Bugfix(?) for ensuring W_dec retains unit norm, this was not there when I trained my original autoencoders.
+    # @torch.no_grad()
+    # def make_decoder_weights_and_grad_unit_norm(self):
+    #     W_dec_normed = self.W_dec / self.W_dec.norm(dim=-1, keepdim=True)
+    #     W_dec_grad_proj = (self.W_dec.grad * W_dec_normed).sum(
+    #         -1, keepdim=True
+    #     ) * W_dec_normed
+    #     self.W_dec.grad -= W_dec_grad_proj
+    #     # Bugfix(?) for ensuring W_dec retains unit norm, this was not there when I trained my original autoencoders.
 
 
 
 # %%
-encoder = GatedAutoEncoder(cfg, 5000, l1_coeff=6e-4)
+encoder = AnthroGatedSAE(cfg, 5000, l1_coeff=1e-4)
 model_dtype = DTYPES[cfg["enc_dtype"]]
+
+
 
 # %%
 num_batches = cfg["num_tokens"] // cfg["batch_size"]
 
+encoder.l1_coeff = 2e-5
+
 # model_num_batches = cfg["model_batch_size"] * num_batches
 encoder_optim = torch.optim.Adam(
-    encoder.parameters(), lr=cfg["lr"], betas=(cfg["beta1"], cfg["beta2"])
+    encoder.parameters(), 
+    lr=1e-4,
+    # lr=1e-4,
+    # lr=cfg["lr"], 
+    betas=(cfg["beta1"], cfg["beta2"])
 )
 recons_scores = []
 act_freq_scores_list = []
@@ -155,7 +141,7 @@ for i in range(num_batches):
 
     loss, l2_loss, l1_loss, auxiliary_loss, l0 = encoder(acts)
     loss.backward()
-    encoder.make_decoder_weights_and_grad_unit_norm()
+    # encoder.make_decoder_weights_and_grad_unit_norm()
     encoder_optim.step()
     encoder_optim.zero_grad()
 

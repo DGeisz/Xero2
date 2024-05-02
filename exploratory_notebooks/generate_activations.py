@@ -207,7 +207,7 @@ def shuffle_data(all_tokens):
 
 
 # %%
-loading_data_first_time = True
+loading_data_first_time = False
 if loading_data_first_time:
     data = load_dataset(
         "NeelNanda/c4-code-tokenized-2b", split="train", cache_dir="/workspace/cache/"
@@ -247,7 +247,8 @@ class Buffer:
     def __init__(self, cfg):
         self.buffer = torch.zeros(
             (cfg["buffer_size"], cfg["act_size"]),
-            dtype=torch.bfloat16,
+            # dtype=torch.bfloat16,
+            dtype=torch.float32,
             requires_grad=False,
         ).to(cfg["device"])
         self.cfg = cfg
@@ -258,7 +259,10 @@ class Buffer:
     @torch.no_grad()
     def refresh(self):
         self.pointer = 0
-        with torch.autocast("cuda", torch.bfloat16):
+        # data_dtype = torch.bfloat16
+        data_dtype = torch.float32
+
+        with torch.autocast("cuda", data_dtype):
             if self.first:
                 num_batches = self.cfg["buffer_batches"]
             else:

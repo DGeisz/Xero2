@@ -207,7 +207,7 @@ def shuffle_data(all_tokens):
 
 
 # %%
-loading_data_first_time = False
+loading_data_first_time = True
 if loading_data_first_time:
     data = load_dataset(
         "NeelNanda/c4-code-tokenized-2b", split="train", cache_dir="/workspace/cache/"

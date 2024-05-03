@@ -24,11 +24,12 @@ default_cfg = {
     "beta2": 0.99,
     "dict_mult": 32,
     "seq_len": 128,
-    "enc_dtype": "fp32",
+    # "enc_dtype": "fp32",
+    "enc_dtype": "bf16",
     "remove_rare_dir": False,
     "model_name": "gelu-1l",
-    "site": "mlp_out",
-    # "site": "post",
+    # "site": "mlp_out",
+    "site": "post",
     "layer": 0,
     "device": "cuda:0",
 }
@@ -247,8 +248,8 @@ class Buffer:
     def __init__(self, cfg):
         self.buffer = torch.zeros(
             (cfg["buffer_size"], cfg["act_size"]),
-            # dtype=torch.bfloat16,
-            dtype=torch.float32,
+            dtype=torch.bfloat16,
+            # dtype=torch.float32,
             requires_grad=False,
         ).to(cfg["device"])
         self.cfg = cfg
@@ -259,8 +260,8 @@ class Buffer:
     @torch.no_grad()
     def refresh(self):
         self.pointer = 0
-        # data_dtype = torch.bfloat16
-        data_dtype = torch.float32
+        data_dtype = torch.bfloat16
+        # data_dtype = torch.float32
 
         with torch.autocast("cuda", data_dtype):
             if self.first:
@@ -382,10 +383,12 @@ def get_freqs(num_batches=25, local_encoder=None):
 # %%
 @torch.no_grad()
 def re_init(indices, encoder):
-    new_W_enc = torch.nn.init.kaiming_uniform_(torch.zeros_like(encoder.W_enc))
+    new_W_gate = torch.nn.init.kaiming_uniform_(torch.zeros_like(encoder.W_gate))
     new_W_dec = torch.nn.init.kaiming_uniform_(torch.zeros_like(encoder.W_dec))
     new_b_enc = torch.zeros_like(encoder.b_enc)
-    print(new_W_dec.shape, new_W_enc.shape, new_b_enc.shape)
-    encoder.W_enc.data[:, indices] = new_W_enc[:, indices]
+    new_b_enc_gate = torch.zeros_like(encoder.b_enc_gate)
+    print(new_W_dec.shape, new_W_gate.shape, new_b_enc.shape)
+    encoder.W_gate.data[:, indices] = new_W_gate[:, indices]
     encoder.W_dec.data[indices, :] = new_W_dec[indices, :]
     encoder.b_enc.data[indices] = new_b_enc[indices]
+    encoder.b_enc_gate.data[indices] = new_b_enc_gate[indices]

@@ -304,8 +304,6 @@ class Buffer:
 def replacement_hook(mlp_post, hook, encoder):
     mlp_post_reconstr = encoder(mlp_post)[1]
 
-    print(mlp_post_reconstr.shape, mlp_post.shape)
-
     return mlp_post_reconstr
 
 

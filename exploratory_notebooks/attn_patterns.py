@@ -14,24 +14,14 @@ model = HookedTransformer.from_pretrained('gpt2').to(DTYPES[cfg["enc_dtype"]]).t
 # %%
 _, cache = model.run_with_cache(all_tokens[:10].to(cfg["device"]))
 
-
-
-# %%
-cache['pattern', 0].shape
-
-# %%
-
-
 # %%
 def plot_layer_heads(layer: int):
     pattern = einops.reduce(cache['pattern', layer], "b h x y -> h x y", 'mean')
 
-    return cv.attention.attention_heads(pattern[:, :40, :40], tokens=model.to_str_tokens(all_tokens[0])).show_code()
-
-
+    return cv.attention.attention_heads(pattern[:, :40, :40], tokens=model.to_str_tokens(all_tokens[0][:40])).show_code()
 
 # %%
-HTML(plot_layer_heads(9))
+HTML(plot_layer_heads(2))
 
 
 # %%

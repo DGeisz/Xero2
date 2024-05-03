@@ -93,7 +93,8 @@ class AnthroGatedSAE(nn.Module):
 
         # Auxiliary loss
         gate_reconstruction = einops.einsum(gate_magnitude, self.W_dec.detach(), "... hidden_dim, hidden_dim output_dim -> ... output_dim") + self.b_dec.detach()
-        auxiliary_loss = F.mse_loss(gate_reconstruction, x, reduction='mean')
+        # auxiliary_loss = F.mse_loss(gate_reconstruction, x, reduction='mean')
+        auxiliary_loss = (gate_reconstruction - x).pow(2).sum(-1).mean(0)
 
         gated_sae_loss += auxiliary_loss
 
@@ -112,12 +113,24 @@ class AnthroGatedSAE(nn.Module):
 
 
 # %%
-encoder = AnthroGatedSAE(cfg, 5000, l1_coeff=1e-4)
-model_dtype = DTYPES[cfg["enc_dtype"]]
-
+encoder = AnthroGatedSAE(cfg, 25000, l1_coeff=4e-4)
 
 
 # %%
+@torch.no_grad()
+def re_init(indices, encoder):
+    new_W_gate = torch.nn.init.kaiming_uniform_(torch.zeros_like(encoder.W_gate))
+    new_W_dec = torch.nn.init.kaiming_uniform_(torch.zeros_like(encoder.W_dec))
+    # new_b_enc = torch.zeros_like(encoder.b_enc)
+    new_b_enc_gate = torch.zeros_like(encoder.b_enc_gate)
+    # print(new_W_dec.shape, new_W_gate.shape, new_b_enc.shape)
+    encoder.W_gate.data[:, indices] = new_W_gate[:, indices]
+    encoder.W_dec.data[indices, :] = new_W_dec[indices, :]
+    # encoder.b_enc.data[indices] = new_b_enc[indices]
+    encoder.b_enc_gate.data[indices] = new_b_enc_gate[indices]
+
+
+
 num_batches = cfg["num_tokens"] // cfg["batch_size"]
 
 encoder_optim = torch.optim.Adam(
@@ -157,6 +170,10 @@ for i in range(num_batches):
         x = get_recons_loss(local_encoder=encoder)
         print("Reconstruction:", x)
         freqs = get_freqs(5, local_encoder=encoder)
+
+        to_be_reset = freqs < 10 ** (-5.5)
+        print("Resetting neurons!", to_be_reset.sum())
+        re_init(to_be_reset, encoder)
         # histogram(freqs.log10(), marginal="box", histnorm="percent", title="Frequencies")
         # wandb.log(
         #     {

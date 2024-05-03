@@ -239,6 +239,10 @@ def get_acts(tokens):
 
 
 # %%
+model.tokenizer.decode(all_tokens[2])
+
+
+# %%
 class Buffer:
     """
     This defines a data buffer, to store a bunch of MLP acts that can be used to train the autoencoder. It'll automatically run the model to generate more when it gets halfway empty.

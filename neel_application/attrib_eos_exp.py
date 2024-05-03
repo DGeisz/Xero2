@@ -1137,6 +1137,8 @@ clean_tokens = model.to_tokens(clean_prompts, prepend_bos=True)
 
 _, clean_cache = model.run_with_cache(clean_tokens)
 
+# %%
+
 print_prompt_stats(clean_prompts)
 
 # %%
@@ -1454,8 +1456,8 @@ def create_attn_attr(clean_cache, grad_cache):
 
     bos_attention_attr = (z_stack - bos_stack) * z_grad_stack
     bos_attention_attr = einops.reduce(
-        bos_attention_attr[:, :, -1, :, :],
-        "layer batch head_index d_head -> layer head_index",
+        bos_attention_attr,
+        "layer batch seq head_index d_head -> layer head_index",
         "sum",
     )
 

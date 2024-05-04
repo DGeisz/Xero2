@@ -394,7 +394,8 @@ torch.set_grad_enabled(True)
 
 
 start = time.time()
-l, cache, grad_cache = get_cache_forward_backward(model, toks, toks.shape[1] - 1)
+for _ in range(10):
+    l, cache, grad_cache = get_cache_forward_backward(model, toks, toks.shape[1] - 1)
 
 print("Time taken: ", time.time() - start)
 

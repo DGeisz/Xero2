@@ -109,10 +109,6 @@ tokens = shuffle_data(tokens)
 # %%
 all_tokens = tokens
 
-
-
-
-
 # %%
 def get_attn_head_ablation_types(
     model,
@@ -386,15 +382,19 @@ bos_ablate_for_head = get_attn_head_ablation_types(
 # input_str = "Mary and John went to the park.  Mary gave the basket to "
 input_str ="14. Missouri 15. Alabama 16. Georgia 17"
 
-
 toks = model.to_tokens(input_str, prepend_bos=True)
 
 # %%
 torch.set_grad_enabled(True)
 
-
 start = time.time()
-l, cache, grad_cache = get_cache_forward_backward(model, toks, toks.shape[1] - 1)
+
+for _ in range(100):
+    l, cache, grad_cache = get_cache_forward_backward(
+        model, 
+        toks, 
+        toks.shape[1] - 1
+    )
 
 print("Time taken: ", time.time() - start)
 

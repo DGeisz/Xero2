@@ -60,10 +60,11 @@ bos_ablate_for_head = get_bos_ablate_for_head(
     bos_ablate_threshold=0.75,
 )
 
+# bws_access_key_id='',
+# bws_secret_access_key='',
+
 # %%
 session = boto3.Session(
-    # aws_access_key_id='',
-    # aws_secret_access_key='',
     region_name="us-east-2",
 )
 s3 = session.client("s3")

@@ -46,11 +46,11 @@ bb.shape
 # %%
 torch.save(bb, 'test.pt')
 
+# bws_access_key_id='',
+# bws_secret_access_key='',
 
 # %%
 session = boto3.Session(
-    # aws_access_key_id='',
-    # aws_secret_access_key='',
     region_name='us-east-2'
 )
 s3 = session.client('s3')

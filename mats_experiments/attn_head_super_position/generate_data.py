@@ -22,11 +22,14 @@ def generate_data(
     thread_id=0,
     seq_batch_size=125,
     start_batch=0,
-    num_batches=1000,
+    num_batches=8,
     dtype="bf16",
     device="cuda:0",
     start_token=10,
+    chunk_size=10,
 ):
+    print(device)
+
     cfg = {"model": "gpt2", "device": device, "enc_dtype": dtype}
     bos_ablate_for_head = bos_ablate_for_head.to(device)
 
@@ -37,15 +40,19 @@ def generate_data(
     )
 
     start_batch = (
-        (start_batch // (num_threads * seq_batch_size)) * num_threads * seq_batch_size
+        (start_batch // (num_threads)) * num_threads
     )
+
+    start_batch *= num_threads
+
+    print('start batch', start_batch)
 
     start_time = time.time()
 
     for i in range(num_batches):
-        batch_start_index = start_batch + (
-            ((num_threads * i) + thread_id) * seq_batch_size
-        )
+
+        b_start_index = (start_batch + ((num_threads * i) + thread_id))
+        batch_start_index =  b_start_index * seq_batch_size
 
         tokens = select_token_range(batch_start_index, seq_batch_size).to(device)
 
@@ -67,7 +74,7 @@ def generate_data(
 
         i = 0
 
-        for chunk in torch.split(torch.arange(N), 10):
+        for chunk in torch.split(torch.arange(N), chunk_size):
             print(
                 "Thread:",
                 thread_id,
@@ -101,9 +108,9 @@ def generate_data(
             f"Elapsed: {time.time() - start_time:.2f}",
         )
 
-        bos_file_name = file_template.format("bos", batch_start_index, seq_batch_size)
-        zero_file_name = file_template.format("zero", batch_start_index, seq_batch_size)
-        mix_file_name = file_template.format("mix", batch_start_index, seq_batch_size)
+        bos_file_name = file_template.format("bos", b_start_index, seq_batch_size)
+        zero_file_name = file_template.format("zero", b_start_index, seq_batch_size)
+        mix_file_name = file_template.format("mix", b_start_index, seq_batch_size)
 
         torch.save(bos, bos_file_name)
         torch.save(zero, zero_file_name)

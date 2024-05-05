@@ -69,7 +69,7 @@ DTYPES = {"fp32": torch.float32, "fp16": torch.float16, "bf16": torch.bfloat16}
 # %%
 cfg = {
     "model": "gpt2",
-    "device": "cuda:0",
+    "device": "cuda:1",
     "enc_dtype": "bf16",
 }
 
@@ -84,9 +84,6 @@ model = (
 
 # %%
 test_tokens_for_bos_ablate = select_token_range(0, 100).to(cfg["device"])
-
-# %%
-test_tokens_for_bos_ablate.shape
 
 
 # %%
@@ -103,11 +100,11 @@ bos_ablate_for_head = get_bos_ablate_for_head(
 
 # %%
 bos, zero, mix = get_attn_attrib_on_seq(
-    model, test_tokens_for_bos_ablate[:10], 10, bos_ablate_for_head, time_run=True
+    model, test_tokens_for_bos_ablate[:20], 10, bos_ablate_for_head, time_run=True
 )
 
 # %%
-bos.shape
+torch.cuda.device_count()
 
 
 # %%

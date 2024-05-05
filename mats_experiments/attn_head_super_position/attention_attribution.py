@@ -243,7 +243,8 @@ def get_attn_attrib_on_seq(
     model, tokens, start_index, bos_ablate_for_head, collapse_batch=True, time_run=False
 ):
     if time_run:
-        start = time()
+        big_start = time()
+        start = big_start
     z_stack, z_grad_stack, bos_stack = get_z_stack_forward_backward_on_seq(
         model, tokens, start_index
     )
@@ -301,5 +302,6 @@ def get_attn_attrib_on_seq(
 
         if time_run:
             print(f"E3: {time() - start:.2f}s")
+            print(f"Total: {time() - big_start:.2f}s")
 
         return bos_attn_attribution, zero_attn_attribution, mix_attn_attribution

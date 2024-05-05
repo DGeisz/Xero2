@@ -4,7 +4,8 @@
 %autoreload 2
 
 # %%
-from data import select_token_range
+from data import select_token_range, big_data
+
 
 import torch
 import torch as t
@@ -28,6 +29,10 @@ from attention_attribution import (
     AblationType,
     GG,
 )
+
+# %%
+big_data
+
 
 # %%
 def imshow(tensor, **kwargs):
@@ -65,11 +70,10 @@ DTYPES = {"fp32": torch.float32, "fp16": torch.float16, "bf16": torch.bfloat16}
 cfg = {
     "model": "gpt2",
     "device": "cuda:0",
-    "enc_dtype": "fp32",
+    "enc_dtype": "bf16",
 }
 
 model_dtype = DTYPES[cfg["enc_dtype"]]
-
 
 # %%
 model = (
@@ -78,9 +82,12 @@ model = (
     .to(cfg["device"])
 )
 
-
 # %%
 test_tokens_for_bos_ablate = select_token_range(0, 100).to(cfg["device"])
+
+# %%
+test_tokens_for_bos_ablate.shape
+
 
 # %%
 
@@ -92,6 +99,16 @@ bos_ablate_for_head = get_bos_ablate_for_head(
     bos_value_compare_ratio=0.1,
     bos_ablate_threshold=0.75,
 )
+
+
+# %%
+bos, zero, mix = get_attn_attrib_on_seq(
+    model, test_tokens_for_bos_ablate[:10], 10, bos_ablate_for_head, time_run=True
+)
+
+# %%
+bos.shape
+
 
 # %%
 test_prompts = [

@@ -109,10 +109,6 @@ tokens = shuffle_data(tokens)
 # %%
 all_tokens = tokens
 
-
-
-
-
 # %%
 def get_attn_head_ablation_types(
     model,
@@ -172,7 +168,9 @@ def get_log_probs(
     logits: Float[Tensor, "batch posn d_vocab"], tokens: Int[Tensor, "batch posn"]
 ) -> Float[Tensor, "batch posn-1"]:
 
-    log_probs = logits.log_softmax(dim=-1)
+
+    # log_probs = logits.log_softmax(dim=-1)
+    log_probs = logits
     # Get logprobs the first seq_len-1 predictions (so we can compare them with the actual next tokens)
     log_probs_for_tokens = (
         log_probs[:, :-1].gather(dim=-1, index=tokens[:, 1:].unsqueeze(-1)).squeeze(-1)
@@ -182,6 +180,10 @@ def get_log_probs(
 
 
 def get_cache_forward_backward(model, tokens, token_index):
+    if token_index < 0:
+        token_index += tokens.shape[1]
+
+
     model.reset_hooks()
     cache = {}
 
@@ -248,6 +250,45 @@ def get_attn_attrib(cache, grad_cache, bos_ablate_for_head):
     )
 
     return attn_attr
+
+def get_attn_attrib_bad(cache, grad_cache, bos_ablate_for_head):
+    seq_len = cache["z", 0].shape[1]
+
+    bos_stack = torch.stack(
+        [
+            einops.repeat(
+                cache["z", layer][:, 0, ...], "B ... -> B seq ...", seq=seq_len
+            )
+            for layer in range(model.cfg.n_layers)
+        ],
+        dim=0,
+    )
+
+    z_stack = torch.stack(
+        [cache["z", layer] for layer in range(model.cfg.n_layers)], dim=0
+    )
+    z_grad_stack = torch.stack(
+        [grad_cache["z", layer] for layer in range(model.cfg.n_layers)], dim=0
+    )
+
+    # z_patch = t.zeros_like(z_stack)
+    z_patch = bos_stack
+
+    # for layer, head in torch.nonzero(t.logical_not(bos_ablate_for_head)).tolist():
+    #     z_patch[layer, :, :, head] = bos_stack[layer, :, :, head]
+
+    attn_attr = (z_patch - z_stack) * z_grad_stack
+
+    for layer, head in torch.nonzero(t.logical_not(bos_ablate_for_head)).tolist():
+        attn_attr[layer, :, :, head] = torch.zeros_like(attn_attr[layer, :, :, head])
+
+    return attn_attr
+
+# %%
+# attn_attr, "layer batch seq head d_head -> layer head", "sum"
+
+abad.shape
+
 
 
 
@@ -380,22 +421,21 @@ bos_ablate_for_head = get_attn_head_ablation_types(
     model, all_tokens, num_samples=10, bos_value_compare_ratio=0.1
 )
 
+# %%
+
 
 # input_str = "When I decided to go walking in the park today, I didn't expect to see a giraffe."
 # input_str = "personalise it with your images, text and designs on the front or back.\nDark grey, heather blue and burgundy are just some of the new shades available. Added to which there's your classic black and white to make your designs really stand out.\nAll of our t-shirts are made from 100% cotton. We also have a range of long sleeve tees made from pure organic cotton that are highly recommendable for sensitive skin.\nThe long sleeve t-shirts combine warmth and comfort with style. The cut is designed to fit comfortably while allowing air circulation.\nPersonalising the new long sleeve"
 # input_str = "Mary and John went to the park.  Mary gave the basket to "
 input_str ="14. Missouri 15. Alabama 16. Georgia 17"
 
-
 toks = model.to_tokens(input_str, prepend_bos=True)
 
-# %%
 torch.set_grad_enabled(True)
 
-
 start = time.time()
-for _ in range(10):
-    l, cache, grad_cache = get_cache_forward_backward(model, toks, toks.shape[1] - 1)
+
+l, cache, grad_cache = get_cache_forward_backward(model, toks, -1)
 
 print("Time taken: ", time.time() - start)
 
@@ -404,6 +444,12 @@ attn_attr = get_attn_attrib(cache, grad_cache, bos_ablate_for_head)
 
 imshow(attn_attr[:, :], width=600)
 print(model.to_str_tokens(toks))
+
+# %%
+abad = get_attn_attrib_bad(cache,grad_cache, bos_ablate_for_head)
+
+
+
 
 # %%
 run_activation_patching(toks, toks.shape[1] - 1)

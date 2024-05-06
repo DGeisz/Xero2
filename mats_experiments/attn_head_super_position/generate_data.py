@@ -15,6 +15,12 @@ from attention_attribution import (
 file_template = "attr-type-{}-batch-start-{}-batch-size-{}.pt"
 
 
+def get_file_name(attr_type: str, batch_i: int, batch_size=125):
+    assert attr_type in ("bos", "zero", "mix")
+
+    return file_template.format(attr_type, batch_i, batch_size)
+
+
 def generate_data(
     s3_client,
     bos_ablate_for_head,
@@ -39,20 +45,18 @@ def generate_data(
         .to(cfg["device"])
     )
 
-    start_batch = (
-        (start_batch // (num_threads)) * num_threads
-    )
+    start_batch = (start_batch // (num_threads)) * num_threads
 
     start_batch *= num_threads
 
-    print('start batch', start_batch)
+    print("start batch", start_batch)
 
     start_time = time.time()
 
     for i in range(num_batches):
 
-        b_start_index = (start_batch + ((num_threads * i) + thread_id))
-        batch_start_index =  b_start_index * seq_batch_size
+        b_start_index = start_batch + ((num_threads * i) + thread_id)
+        batch_start_index = b_start_index * seq_batch_size
 
         tokens = select_token_range(batch_start_index, seq_batch_size).to(device)
 

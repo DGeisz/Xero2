@@ -7,10 +7,41 @@ import torch
 import boto3
 import pathlib
 import io
+import requests
+
 
 from tqdm import trange
+import plotly.express as px
+
+from generate_data import file_template
+from transformer_lens import utils
 
 # %%
+def imshow(tensor, **kwargs):
+    px.imshow(
+        utils.to_numpy(tensor),
+        color_continuous_midpoint=0.0,
+        color_continuous_scale="RdBu",
+        **kwargs,
+    ).show()
+
+
+def line(tensor, **kwargs):
+    px.line(
+        y=utils.to_numpy(tensor),
+        **kwargs,
+    ).show()
+
+
+def scatter(x, y, xaxis="", yaxis="", caxis="", **kwargs):
+    x = utils.to_numpy(x)
+    y = utils.to_numpy(y)
+    px.scatter(
+        y=y,
+        x=x,
+        labels={"x": xaxis, "y": yaxis, "color": caxis},
+        **kwargs,
+    ).show()
 
 
 # %%
@@ -76,14 +107,23 @@ s3.upload_file('test.pt', 'mech-interp', 'attr/test.pt')
 pathlib.Path.unlink('test.pt')
 
 # %%
-import requests
+
+file_name = file_template.format('zero', 1, 125)
 
 # %%
-url = 'https://mech-interp.s3.us-east-2.amazonaws.com/attribution/attr-type-mix-batch-start-0-batch-size-3.pt'
+url = f'https://mech-interp.s3.us-east-2.amazonaws.com/attribution/{file_name}'
 
 res = requests.get(url)
 
 tensor = torch.load(io.BytesIO(res.content))
+
+# %%
+tensor.shape
+
+# %%
+imshow(tensor[1000].float())
+
+
 
 # %%
 tensor.shape

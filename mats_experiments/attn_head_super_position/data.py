@@ -17,10 +17,13 @@ big_data = load_dataset(
 big_data.set_format(type="torch", columns=["input_ids"])
 
 
-def select_token_range(start, num_samples):
+def select_token_range(start, num_samples, shuffle=False):
     tokens = big_data.select(range(start, start + num_samples))["input_ids"]
     tokens = einops.rearrange(
         tokens, "batch (x seq_len) -> (batch x) seq_len", x=8, seq_len=128
     )
 
-    return shuffle_data(tokens)
+    if shuffle:
+        return shuffle_data(tokens)
+    else:
+        return tokens

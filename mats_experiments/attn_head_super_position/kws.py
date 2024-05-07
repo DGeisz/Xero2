@@ -6,9 +6,8 @@ from torch import Tensor
 from dataclasses import dataclass
 from typing import List, Tuple, Optional
 from jaxtyping import Float, Int
-from generate_activations import Buffer, cfg
 
-device = cfg["device"]
+device = "cuda:0"
 
 
 def hyperbola(x, a):
@@ -52,6 +51,8 @@ class KWSSingleBatchOutput:
     mask: Int[Tensor, "N F"]
     winner_count: Int[Tensor, "F"]
 
+    winner_features: Optional[Float[Tensor, "M D"]] = None
+
 
 MIN_PREC = 1e-10
 
@@ -60,17 +61,13 @@ class KWinnerSynthesis:
     width = None
     features: Float[Tensor, "num_features width"]
 
-    def __init__(self, config: KWSConfig, buffer_config):
+    def __init__(self, config: KWSConfig, buffer):
         self.config = config
-        self.buffer_config = buffer_config
         self.batch_index = 0
+        self.batch_size = buffer.batch_size
 
-        self._buffer = Buffer(buffer_config)
+        self._buffer = buffer
         self._init_weights()
-
-    @property
-    def batch_size(self):
-        return self.buffer_config["batch_size"]
 
     def random_data_batch(self):
         return self._buffer.next()
@@ -131,13 +128,31 @@ class KWinnerSynthesis:
 
         return reconstructed_data
 
-    def run_and_reconstruct_single_batch(self) -> KWSSingleBatchOutput:
+    def get_winner_indices(self, data):
+        raw_output = einops.einsum(data, self.features, "n d, f d -> n f")
+        winner_indices = t.argsort(raw_output, descending=True, dim=-1)[
+            :, : self.config.n_winners
+        ]
+
+        return winner_indices
+
+    def get_features_for_winners(self, winner_indices):
+        return self.features[winner_indices]
+
+    def run_and_reconstruct_single_batch(
+        self, include_winner_features=False
+    ) -> KWSSingleBatchOutput:
         data = self.random_data_batch()
 
         raw_output = einops.einsum(data, self.features, "n d, f d -> n f")
         winner_indices = t.argsort(raw_output, descending=True, dim=-1)[
             :, : self.config.n_winners
         ]
+
+        winner_features = None
+
+        if include_winner_features:
+            winner_features = self.features[winner_indices]
 
         # We want to set all values that weren't winners to 0
         mask = t.zeros_like(raw_output)
@@ -166,6 +181,7 @@ class KWinnerSynthesis:
             max_output=max_output,
             mask=mask,
             winner_count=winner_count,
+            winner_features=winner_features,
         )
 
     def get_winner_count_from_n_batches(self, batches: Int):

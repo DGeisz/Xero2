@@ -1,42 +1,25 @@
-import os
-import sys
-import plotly.express as px
-import torch as t
 import torch
 
-from torch import Tensor
 import torch.nn as nn
 import torch.nn.functional as F
-from pathlib import Path
-import numpy as np
-import einops
-from jaxtyping import Int, Float
-from typing import List, Optional, Tuple
-import functools
-from tqdm import tqdm
-from IPython.display import display
-import webbrowser
-import gdown
-from transformer_lens.hook_points import HookPoint
-from transformer_lens import (
-    utils,
-    HookedTransformer,
-    HookedTransformerConfig,
-    FactoredMatrix,
-    ActivationCache,
-)
-import circuitsvis as cv
 
 
 class AttributionSAE(nn.Module):
     def __init__(
-        self, attr_type: str, n_features: int, dtype=torch.bfloat16, act_size=144
+        self,
+        attr_type: str,
+        n_features: int,
+        l1_coeff: float,
+        dtype=torch.float32,
+        act_size=144,
+        device="cuda:0",
     ):
         super().__init__()
 
         self.attr_type = attr_type
         self.act_size = act_size
         self.n_features = n_features
+        self.l1_coeff = l1_coeff
 
         self.W_enc = nn.Parameter(
             torch.nn.init.kaiming_uniform_(
@@ -58,3 +41,29 @@ class AttributionSAE(nn.Module):
         self.b_dec = nn.Parameter(torch.zeros(self.act_size, dtype=dtype))
 
         self.W_dec.data[:] = self.W_dec / self.W_dec.norm(dim=-1, keepdim=True)
+
+        self.to(device)
+
+    def forward(self, x):
+        x_cent = x - self.b_dec
+        acts = F.relu(x_cent @ self.W_enc + self.b_enc)
+
+        x_reconstruct = acts @ self.W_dec + self.b_dec
+
+        l2_loss = (x_reconstruct.float() - x.float()).pow(2).sum(-1).mean(0)
+        l1_loss = self.l1_coeff * (acts.float().abs().sum())
+        l0 = (acts > 0).sum() / x.shape[0]
+
+        loss = l2_loss + l1_loss
+
+        return loss, x_reconstruct, acts, l2_loss, l1_loss, l0
+
+    @torch.no_grad()
+    def make_decoder_weights_and_grad_unit_norm(self):
+        W_dec_normed = self.W_dec / self.W_dec.norm(dim=-1, keepdim=True)
+        W_dec_grad_proj = (self.W_dec.grad * W_dec_normed).sum(
+            -1, keepdim=True
+        ) * W_dec_normed
+        self.W_dec.grad -= W_dec_grad_proj
+        # Bugfix(?) for ensuring W_dec retains unit norm, this was not there when I trained my original autoencoders.
+        self.W_dec.data = W_dec_normed

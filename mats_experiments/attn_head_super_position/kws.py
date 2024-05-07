@@ -1,11 +1,16 @@
 import torch as t
+import torch
 import einops
 import time
+import tqdm
+import circuitsvis as cv
 
 from torch import Tensor
 from dataclasses import dataclass
 from typing import List, Tuple, Optional
 from jaxtyping import Float, Int
+from attribution_buffer import load_attribution_tensor_locally
+from data import select_token_range
 
 device = "cuda:0"
 
@@ -16,6 +21,9 @@ def hyperbola(x, a):
 
 @dataclass
 class KWSConfig:
+    attr_type: str
+    device = "cuda:0"
+
     num_features: int
     n_winners: int
     num_batches: int
@@ -128,13 +136,20 @@ class KWinnerSynthesis:
 
         return reconstructed_data
 
-    def get_winner_indices(self, data):
+    def get_winner_indices_and_values(self, data):
         raw_output = einops.einsum(data, self.features, "n d, f d -> n f")
-        winner_indices = t.argsort(raw_output, descending=True, dim=-1)[
-            :, : self.config.n_winners
-        ]
 
-        return winner_indices
+        values, indices = t.sort(raw_output, descending=True, dim=-1)
+        # print("eta nu", values.shape, indices.shape)
+        # [
+        #     :, : self.config.n_winners
+        # ]
+
+        # winner_indices = t.argsort(raw_output, descending=True, dim=-1)[
+        #     :, : self.config.n_winners
+        # ]
+
+        return values[:, : self.config.n_winners], indices[:, : self.config.n_winners]
 
     def get_features_for_winners(self, winner_indices):
         return self.features[winner_indices]
@@ -285,3 +300,66 @@ class KWinnerSynthesis:
                 dead_neuron_winner_count = t.zeros(
                     self.config.num_features, device=device
                 )
+
+    sequence_attribution = None
+    seq_attr_N = None
+
+    def get_sequence_attribution(self, N=None):
+        attr_data = load_attribution_tensor_locally(self.config.attr_type, 0, 1000)
+        seq_len = 119
+
+        attr_data = einops.rearrange(
+            attr_data, "(batch seq) l h -> batch seq l h", seq=seq_len
+        )
+
+        process_batch_size = 32
+
+        sequence_attribution = [[] for _ in range(self.config.num_features)]
+
+        if N is None:
+            N = attr_data.shape[0]
+
+        total = N // process_batch_size
+
+        for i, indices in tqdm.tqdm(
+            enumerate(torch.split(torch.arange(N), process_batch_size)),
+            total=total,
+        ):
+            data = attr_data[indices]
+
+            if len(indices) != process_batch_size:
+                break
+
+            reshaped_data = einops.rearrange(data, "batch seq l h -> (batch seq) (l h)")
+            reshaped_data /= reshaped_data.norm(dim=-1, keepdim=True)
+
+            winner_values, winner_indices = self.get_winner_indices_and_values(
+                reshaped_data.to(self.config.device)
+            )
+
+            winner_indices = einops.rearrange(
+                winner_indices, "(batch seq) n -> batch seq n", seq=seq_len
+            )
+            winner_values = einops.rearrange(
+                winner_values, "(batch seq) n -> batch seq n", seq=seq_len
+            )
+
+            for batch in range(process_batch_size):
+                for seq_i in range(seq_len):
+                    for winner_i, value in zip(
+                        winner_indices[batch, seq_i].tolist(),
+                        winner_values[batch, seq_i].tolist(),
+                    ):
+                        sequence_attribution[winner_i].append(
+                            ((i * process_batch_size) + batch, seq_i + 9, value)
+                        )
+
+        self.sequence_attribution = sequence_attribution
+        self.seq_attr_N = N
+
+        return sequence_attribution
+
+    _tokens = None
+
+    def show_fucking_anything(self, feature_i):
+        tokens = select_token_range(0, self.seq_attr_N)

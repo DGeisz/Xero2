@@ -23,6 +23,7 @@ from datasets import load_dataset
 from typing import Tuple, List
 from jaxtyping import Float, Int, Bool
 from functools import partial
+from plotly_utils import imshow
 
 from attention_attribution import (
     get_attn_attrib_on_seq,
@@ -63,6 +64,9 @@ bos_ablate_for_head = get_bos_ablate_for_head(
 
 # bws_access_key_id='',
 # bws_secret_access_key='',
+
+# %%
+
 
 # %%
 session = boto3.Session(

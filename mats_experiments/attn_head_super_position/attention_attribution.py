@@ -214,8 +214,6 @@ def get_z_stack_forward_backward_on_seq(model, tokens, start_index):
 
     z_grad_stack_list = []
 
-    tt = True
-
     for token_index in range(start_index, seq):
         loss_per_token = -get_loss(logits, tokens)[:, token_index - 1].sum(dim=0)
 

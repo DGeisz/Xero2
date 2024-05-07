@@ -21,7 +21,7 @@ s3_url_template = "https://mech-interp.s3.us-east-2.amazonaws.com/attribution/{}
 SAVE_DIR = "/workspace/data/attribution/"
 
 
-def load_attribution_tensor(attr_type: str, batch_i: int, batch_size=125):
+def load_attribution_tensor(attr_type: str, batch_i: int, batch_size=1000):
     file_name = get_file_name(attr_type, batch_i, batch_size)
     s3_url = s3_url_template.format(file_name)
 
@@ -29,7 +29,7 @@ def load_attribution_tensor(attr_type: str, batch_i: int, batch_size=125):
     return torch.load(io.BytesIO(res.content))
 
 
-def load_attribuion_tensor_locally(attr_type: str, batch_i: int, batch_size=125):
+def load_attribution_tensor_locally(attr_type: str, batch_i: int, batch_size=1000):
     return torch.load(SAVE_DIR + get_file_name(attr_type, batch_i, batch_size))
 
 
@@ -57,7 +57,7 @@ def load_bos_ablate_for_head():
         bos_ablate_threshold=0.75,
     )
 
-    return bos_ablate_for_head
+    return bos_ablate_for_head, model
 
 
 class AttributionBuffer:
@@ -89,7 +89,10 @@ class AttributionBuffer:
         self.bos_ablate_for_head = None
 
         if mask:
-            self.bos_ablate_for_head = load_bos_ablate_for_head()
+            bos, model = load_bos_ablate_for_head()
+
+            self.bos_ablate_for_head = bos
+            self.model = model
 
     def load_next_attribution_data(self):
         self.attribution_data_index += 1
@@ -97,7 +100,7 @@ class AttributionBuffer:
         print("Fetching data:", self.attribution_data_index)
 
         if self.local:
-            self.attribution_data = load_attribuion_tensor_locally(
+            self.attribution_data = load_attribution_tensor_locally(
                 self.attr_type, self.attribution_data_index
             )
         else:
@@ -110,6 +113,15 @@ class AttributionBuffer:
             self._max_batches_per_data = None
 
     _max_batches_per_data = None
+
+    def mask_data_if_available(self, data):
+        if self.bos_ablate_for_head is None:
+            return data
+
+        for layer, head in torch.nonzero(
+            torch.logical_not(self.bos_ablate_for_head)
+        ).tolist():
+            data[:, layer, head] = 0
 
     @property
     def max_batches_per_data(self):
@@ -134,10 +146,11 @@ class AttributionBuffer:
         ].to(self.device)
 
         if self.bos_ablate_for_head is not None:
-            for layer, head in torch.nonzero(
-                torch.logical_not(self.bos_ablate_for_head)
-            ).tolist():
-                batch_data[:, layer, head] = 0
+            self.mask_data_if_available(batch_data)
+            # for layer, head in torch.nonzero(
+            #     torch.logical_not(self.bos_ablate_for_head)
+            # ).tolist():
+            #     batch_data[:, layer, head] = 0
 
         if self.reshape:
             batch_data = einops.rearrange(batch_data, "N l h -> N (l h)")

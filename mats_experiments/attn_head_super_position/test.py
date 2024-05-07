@@ -31,6 +31,15 @@ from attention_attribution import (
 )
 
 # %%
+import torch
+import einops
+
+# %%
+einops.rearrange(torch.tensor([[1, 2], [3, 4]]), "a b -> (a b)")
+
+
+
+# %%
 big_data
 
 

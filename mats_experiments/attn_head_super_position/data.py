@@ -17,11 +17,15 @@ big_data = load_dataset(
 big_data.set_format(type="torch", columns=["input_ids"])
 
 
-def select_token_range(start, num_samples, shuffle=False):
+def select_token_range(start, num_samples, prepend_bos=True, shuffle=False):
     tokens = big_data.select(range(start, start + num_samples))["input_ids"]
     tokens = einops.rearrange(
         tokens, "batch (x seq_len) -> (batch x) seq_len", x=8, seq_len=128
     )
+
+    if prepend_bos:
+        bos = torch.tensor([[50256]]).repeat(tokens.shape[0], 1)
+        tokens = torch.cat([bos, tokens], dim=-1)
 
     if shuffle:
         return shuffle_data(tokens)

@@ -22,8 +22,8 @@ os.makedirs(save_dir_path, exist_ok=True)
 ATTR_TYPE = 'bos'
 
 for batch_i in trange(64 * 4):
-    ten = load_attribution_tensor(ATTR_TYPE, batch_i)
-    file_name = get_file_name(ATTR_TYPE, batch_i)
+    ten = load_attribution_tensor(ATTR_TYPE, batch_i, 1000)
+    file_name = get_file_name(ATTR_TYPE, batch_i, 1000)
 
     torch.save(ten, SAVE_DIR + file_name)
 

@@ -17,7 +17,6 @@ import circuitsvis as cv
 
 
 # %%
-
 lr = 0.01
 
 simple_config = KWSConfig(
@@ -32,7 +31,7 @@ simple_config = KWSConfig(
     dead_neuron_resample_fraction=0.5,
     dead_neuron_resample_initial_delay=40,
     lr=lr,
-    lr_schedule=[(20, lr), (100, lr * 4)]
+    lr_schedule=[(20, lr), (100, lr * 4), (200, lr / 10)]
 )
 
 
@@ -62,20 +61,25 @@ tokens = select_token_range(0, 2000)
 seq_attr = kws.get_sequence_attribution(N=2000)
 
 # %%
+start = 96
+amount = 48
 
-top_heavy = (kws.features[:, 96:].abs().sum(dim=-1) > 2).nonzero().squeeze(-1).tolist()
+
+top_heavy = (kws.features[:, start:start+amount].abs().sum(dim=-1) > 2).nonzero().squeeze(-1).tolist()
 
 top_heavy = sorted(top_heavy, key=lambda x: len(seq_attr[x]), reverse=True)
-
-seq_attr_top = []
+print("num top heavy:", len(top_heavy))
 
 attr_lens = torch.tensor([len(a) for a in seq_attr])
 bigg = attr_lens.float().argsort(descending=True)#[144:]
 
+
 # %%
 bigg = top_heavy
-bigg_i = 13
+bigg_i = 7
 
+start = 0
+amount = 10
 
 imshow(einops.rearrange(kws.features[bigg[bigg_i]], "(l h) -> l h", l=12).cpu().float())
 
@@ -86,10 +90,8 @@ print()
 final = sorted(seq_attr[bigg[bigg_i]], key=lambda x: -x[2])
 print(bigg_i, bigg[:5], len(final), len(seq_attr[bigg[bigg_i]]))
 
-
-start = 10
-amount = 10
 # for i in range(10):
+# for batch, pos, value in seq_attr[bigg[bigg_i]][start:start+amount]:
 for batch, pos, value in final[start:start+amount]:
     # batch, pos, value = final[i]
 
@@ -106,6 +108,27 @@ for batch, pos, value in final[start:start+amount]:
         values=values
 
     ))
+# %%
+i = 14
+pos_amount = 10
+
+batch, pos, value = final[i]
+
+toks = tokens[batch]
+values=[0 for _ in range(len(toks))]
+values[pos + 1] = value
+
+print(model.tokenizer.decode(toks[pos-pos_amount:pos+pos_amount]))
+
+display(cv.tokens.colored_tokens(tokens=kws._buffer.model.to_str_tokens(
+    toks,
+    ),
+    values=values
+))
+
+# %%
+
+    
 
 # %%
 model = kws._buffer.model
@@ -114,18 +137,36 @@ model = kws._buffer.model
 # %%
 utils.test_prompt("for himself. Gollum got past Sam and attacked the invisible Frodo, biting off his finger, and finally regained his 'precious'. As he danced around in elation,", " G", model, prepend_bos=True)
 
+# %%
+bigg[bigg_i]
 
 # %%
-i = 13
+seq_attr[bigg[bigg_i]]
+
+# %%
+tokens = select_token_range(0, 2000)
+
+# %%
+final
+
+
+
+
+# %%
+model.tokenizer.decode(tokens[1293][50:])
+
+
+
+
+
+# %%
+i = 0
 
 batch, pos, value = final[i]
 
 toks = tokens[batch]
 values=[0 for _ in range(len(toks))]
 values[pos + 1] = value
-
-# toks = toks[pos-10:pos+10]
-# values = values[pos-10:pos+10]
 
 display(cv.tokens.colored_tokens(tokens=kws._buffer.model.to_str_tokens(
     toks,

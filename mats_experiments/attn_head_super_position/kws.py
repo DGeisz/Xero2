@@ -11,6 +11,9 @@ from typing import List, Tuple, Optional
 from jaxtyping import Float, Int
 from attribution_buffer import load_attribution_tensor_locally
 from data import select_token_range
+from attention_attribution import (
+    get_attn_attrib_on_seq,
+)
 
 device = "cuda:0"
 
@@ -320,6 +323,37 @@ class KWinnerSynthesis:
 
     sequence_attribution = None
     seq_attr_N = None
+
+    def get_features_for_string(self, string: str):
+        model = self._buffer.model
+        bos_ablate_for_head = self._buffer.bos_ablate_for_head
+
+        tokens = model.to_tokens(string, prepend_bos=True)
+
+        bos, _, _ = get_attn_attrib_on_seq(model, tokens, 0, bos_ablate_for_head)
+
+        self._buffer.mask_data_if_available(bos)
+
+        _, winners = self.get_winner_indices_and_values(
+            einops.rearrange(bos, "b l h -> b (l h)")
+        )
+
+        return bos, winners
+
+    def get_top_feature_for_heads(self, heads: List[Tuple[int, int, int]]):
+        query_vector = torch.zeros_like(self.features[0])
+
+        for h in heads:
+            layer, head, v = h
+            head_i = (layer * 12) + head
+
+            query_vector[head_i] = v
+
+        print(query_vector)
+
+        dots = einops.einsum(self.features, query_vector, "f d, d -> f")
+
+        return dots.argsort(descending=True)
 
     def get_sequence_attribution(self, N=None):
         attr_data = load_attribution_tensor_locally(self.config.attr_type, 0, 1000)

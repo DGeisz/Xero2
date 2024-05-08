@@ -31,7 +31,8 @@ simple_config = KWSConfig(
     dead_neuron_resample_fraction=0.5,
     dead_neuron_resample_initial_delay=40,
     lr=lr,
-    lr_schedule=[(20, lr), (100, lr * 4), (200, lr / 10)]
+    # lr_schedule=[(20, lr), (100, lr * 4), (200, lr / 10)],
+    mask_initial_neurons=True
 )
 
 
@@ -64,21 +65,25 @@ seq_attr = kws.get_sequence_attribution(N=2000)
 start = 96
 amount = 48
 
+thres = 3
 
-top_heavy = (kws.features[:, start:start+amount].abs().sum(dim=-1) > 2).nonzero().squeeze(-1).tolist()
+
+top_heavy = (kws.features[:, start:start+amount].abs().sum(dim=-1) > 3).nonzero().squeeze(-1).tolist()
 
 top_heavy = sorted(top_heavy, key=lambda x: len(seq_attr[x]), reverse=True)
 print("num top heavy:", len(top_heavy))
 
 attr_lens = torch.tensor([len(a) for a in seq_attr])
+
+# %%
 bigg = attr_lens.float().argsort(descending=True)#[144:]
 
 
 # %%
 bigg = top_heavy
-bigg_i = 7
+bigg_i = 37
 
-start = 0
+start = 10
 amount = 10
 
 imshow(einops.rearrange(kws.features[bigg[bigg_i]], "(l h) -> l h", l=12).cpu().float())
@@ -106,9 +111,9 @@ for batch, pos, value in final[start:start+amount]:
         toks,
         ),
         values=values
-
     ))
 # %%
+
 i = 14
 pos_amount = 10
 

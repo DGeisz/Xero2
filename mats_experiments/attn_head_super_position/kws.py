@@ -46,6 +46,8 @@ class KWSConfig:
     # Number of batches to wait before resampling dead neurons
     dead_neuron_resample_initial_delay: int = 20
 
+    mask_initial_neurons: bool = False
+
 
 @dataclass
 class KWSSingleBatchOutput:
@@ -101,6 +103,7 @@ class KWinnerSynthesis:
         if n_winners is None:
             n_winners = self.config.n_winners
 
+        data = self.mask_data_if_applicable(data)
         data = data / data.norm(dim=-1).unsqueeze(-1)
 
         raw_output = einops.einsum(data, self.features, "n d, f d -> n f")
@@ -113,6 +116,8 @@ class KWinnerSynthesis:
         )
 
     def reconstruct(self, data):
+        data = self.mask_data_if_applicable(data)
+
         raw_output = einops.einsum(data, self.features, "n d, f d -> n f")
         winner_indices = t.argsort(raw_output, descending=True, dim=-1)[
             :, : self.config.n_winners
@@ -136,7 +141,17 @@ class KWinnerSynthesis:
 
         return reconstructed_data
 
+    def mask_data_if_applicable(self, data):
+        if self.config.mask_initial_neurons:
+            data = data.clone()
+            data[:, :96] = 0
+            data = data / data.norm(dim=-1, keepdim=True)
+
+        return data
+
     def get_winner_indices_and_values(self, data):
+        data = self.mask_data_if_applicable(data)
+
         raw_output = einops.einsum(data, self.features, "n d, f d -> n f")
 
         values, indices = t.sort(raw_output, descending=True, dim=-1)
@@ -158,6 +173,8 @@ class KWinnerSynthesis:
         self, include_winner_features=False
     ) -> KWSSingleBatchOutput:
         data = self.random_data_batch()
+
+        data = self.mask_data_if_applicable(data)
 
         raw_output = einops.einsum(data, self.features, "n d, f d -> n f")
         winner_indices = t.argsort(raw_output, descending=True, dim=-1)[

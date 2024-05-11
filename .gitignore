@@ -3,5 +3,8 @@ data
 **/__pycache__
 **/sae_visualizer
 **/wandb
+**/artifacts
+**/artifacts/** 
+artifacts
 .python-version
 **/wandb

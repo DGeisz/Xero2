@@ -11,8 +11,10 @@ from transformer_lens import HookedSAETransformer, HookedTransformer, HookedSAE,
 from sae_lens import LMSparseAutoencoderSessionloader
 from pathlib import Path
 from plotly_utils import *
+from tqdm import trange
 
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
 
 # %%
 from huggingface_hub import hf_hub_download
@@ -37,8 +39,9 @@ artifact_dir = artifact.download()
 
 # %%
 REPO_ID = "jbloom/GPT2-Small-Feature-Splitting-Experiment-Layer-8"
+REPO_ID = "pchlenski/gpt2-transcoders"
 # FILENAME = f"blocks.8.hook_resid_pre_768"
-FILE_NAME = "blocks.8.hook_resid_pre_12288"
+# FILE_NAME = "blocks.8.hook_resid_pre_12288"
 
 path = hf_hub_download(repo_id=REPO_ID, filename=FILE_NAME)
 
@@ -116,13 +119,18 @@ torch.set_grad_enabled(False)
 # %%
 # start = 6
 
-s1 = saes[0].W_dec
+i = 7
+
+s1 = saes[i].W_dec
 s1 /= s1.norm(dim=-1, keepdim=True)
 
-s2 = saes[5].W_dec
+s2 = saes[i].W_dec
 s2 /= s2.norm(dim=-1, keepdim=True)
 
 cos_sim = einops.einsum(s1[:10_000], s2[:10_000], "d1 d_model, d2 d_model -> d1 d2")
+
+# N = cos_sim.size(0)
+cos_sim[range(N), range(N)] = 0
 
 # cos_sim.cpu().max(dim=0)
 
@@ -180,7 +188,8 @@ s_big = saes[6]
 
 
 # %%
-num_compressed = 2 ** 8
+num_compressed = 1
+# num_compressed = 2 ** 8
 print("Num Compressed:", num_compressed)
 
 data = einops.rearrange(s_big.W_dec, "(a b) d_model -> a b d_model", a=num_compressed).sum(dim=0)
@@ -199,10 +208,92 @@ print(re_data.shape)
 print(f"Avg error: {(re_data - data).norm(dim=-1).mean().item():.4g}")
 
 # %%
-acts.sum(dim=-1).float()
+saes[6].W_dec.shape
+
+
+# %%
+N, _ = s_big.W_dec.shape
+
+sae = saes[6]
+
+summ = []
+std = []
+maxx = []
+minn = []
+error = []
+
+d_error = []
+
+for i in trange(20, 2000):
+    num = (N // i) * i
+    w_dec_eff = s_big.W_dec[:num]
+    # print(w_dec_eff.shape)
+
+    data = einops.rearrange(w_dec_eff, "(a b) d_model -> a b d_model", a=i).sum(dim=0)
+
+    acts = get_acts(sae, data)
+    acts_sum = acts.sum(dim=-1).float()
+
+    summ.append(acts_sum.mean().item())
+    std.append(acts_sum.std().item())
+    maxx.append(acts_sum.max().item())
+    minn.append(acts_sum.min().item())
+
+    re_data = sae(data)
+
+    error.append((re_data - data).norm(dim=-1).mean().item())
+
+    de_data = sae(re_data)
+
+    d_error.append((re_data - de_data).norm(dim=-1).mean().item())
+
+# %%
+line(error, height=300)
+line(d_error, height=300)
+line(summ, height=300)
+    
 
 
 
+# %%
+#  line([1, 2])
+
+plt.plot(summ)
+plt.plot([a + b for a, b in zip(summ, std)])
+plt.plot([a - b for a, b in zip(summ, std)])
+plt.plot(maxx)
+plt.plot(minn)
+
+plt.show()
+# %%
+line(summ)
+
+
+
+
+
+
+# %%
+
+i = 2
+num = (N // i) * i
+w_dec_eff = s_big.W_dec[:num]
+# print(w_dec_eff.shape)
+
+data = einops.rearrange(w_dec_eff, "(a b) d_model -> a b d_model", a=i).sum(dim=0)
+print(data.shape)
+
+acts = get_acts(s_small, data)
+acts_sum = acts.sum(dim=-1).float()
+
+print(acts_sum.mean().item())
+print(acts_sum.std().item())
+print(acts_sum.max().item())
+print(acts_sum.min().item())
+
+re_data = s_small(data)
+
+print((re_data - data).norm(dim=-1).mean().item())
 
 
 # %%
@@ -225,3 +316,26 @@ histogram((re - s_big.W_dec).norm(dim=-1).cpu())
 (acts > 0).sum(dim=-1)
 
 # %%
+w_small = saes[1].W_dec
+
+# %%
+i = 0
+
+w_small = saes[i].W_dec
+# w_small += saes[i].b_dec.unsqueeze(0)
+acts = get_acts(saes[i], w_small)
+N = acts.size(0)
+acts[range(N), range(N)] = 0
+
+imshow(acts)
+# saes[1].b_dec.shape
+
+
+# %%
+w_small.shape
+
+# %%
+
+# %%
+
+

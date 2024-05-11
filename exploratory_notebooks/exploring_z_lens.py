@@ -1,4 +1,3 @@
-
 # %%
 %load_ext autoreload
 %autoreload 2
@@ -94,11 +93,9 @@ encoder = AutoEncoder.load_from_hf(auto_encoder_run, hf_repo="ckkissane/attn-sae
 
 # %%
 model = HookedTransformer.from_pretrained(encoder.cfg["model_name"]).to(DTYPES[encoder.cfg["enc_dtype"]]).to(encoder.cfg["device"])
-# %%
 
 
-# %%
-cache['pattern', 9].shape
+
 
 # %%
 def get_feature_acts(cache):
@@ -109,6 +106,14 @@ def get_feature_acts(cache):
     linear_feature_activation = einops.einsum(layer_nine_z - encoder.b_dec, encoder.W_enc, 'batch d_model, d_model feature-> batch feature') + encoder.b_enc
 
     return linear_feature_activation.relu()
+
+# %%
+a = {}
+
+# %%
+str(a.get('a', None))
+
+
 
 
 # %%
@@ -150,6 +155,8 @@ v.shape, pattern.shape
 
 # %%
 _, cache = model.run_with_cache(model.to_tokens('14. Colorado 15. Missouri 16. California'))
+
+acts = get_feature_acts(cache)
 acts.nonzero().numel()
 
 values, max_features = acts.topk(
@@ -157,6 +164,133 @@ values, max_features = acts.topk(
 )
 
 # %%
+model.W_O.shape
+
+
+# %%
+# layer_nine_z = cache['z', 9]
+layer_nine_z.shape
+
+# encoder(layer_nine_z)
+
+
+# %%
+acts.shape
+
+
+# %%
+(encoder.W_dec[max_features.squeeze(0)] * values.squeeze(0).unsqueeze(-1)).shape
+
+# %%
+encoder.W_dec.shape
+
+# %%
+max_features.shape
+
+
+
+# %%
+encoder.W[:, max_features].shape, values.shape
+
+
+
+# %%
+r_pre = cache['resid_pre', 9]
+ln1_norm = cache['normalized', 9, 'ln1']
+
+# %%
+ln1 = model.blocks[9].ln1
+
+
+# %%
+x = r_pre - r_pre.mean(dim=-1, keepdim=True)
+
+scale = (x.pow(2).mean(-1, keepdim=True) + ln1.eps).sqrt()
+
+outout = x / scale
+
+# %%
+torch.allclose(ln1_norm, outout)
+
+# %%
+r_pre.shape
+
+# %%
+ln2_norm = cache['normalized', 9, 'ln2']
+
+# %%
+def gelu_new(
+    input: Float[torch.Tensor, "batch pos d_mlp"]
+) -> Float[torch.Tensor, "batch pos d_mlp"]:
+    # Implementation of GeLU used by GPT2 - subtly different from PyTorch's
+    return (
+        0.5
+        * input
+        * (1.0 + torch.tanh(np.sqrt(2.0 / np.pi) * (input + 0.044715 * torch.pow(input, 3.0))))
+    )
+
+
+# %%
+ln2_norm.shape, model.W_in.shape
+
+# %%
+mlp_mid = einops.einsum(ln2_norm, model.W_in[9], "batch seq d_model, d_model d_ff -> batch seq d_ff") + model.b_in[9]
+# mlp_mid = mlp_mid.gelu()
+
+# %%
+torch.allclose(cache['pre', 9], mlp_mid),torch.allclose(cache['post', 9], gelu_new(mlp_mid))
+# (cache['post', 9] - mlp_mid).abs().max()
+
+# %%
+model.cfg.act_fn
+
+
+
+
+
+
+
+
+
+
+# %%
+model.blocks[0].ln1
+
+
+# %%
+cache['normalized', 9, 'ln1'].shape, model.W_Q[9].shape
+
+ln1_norm = cache['normalized', 9, 'ln1']
+w_q = model.W_Q[9]
+
+q = einops.einsum(ln1_norm, w_q, "batch seq d_model, n_heads d_model d_head -> batch seq n_heads d_head") + model.b_Q[9]
+
+# %%
+aq = cache['q', 9]
+
+# %%
+torch.allclose(q, aq)
+
+
+# %%
+ln_out = model.blocks[9].ln1(cache['resid_pre', 9])
+
+# %%
+torch.allclose(ln_out, ln1_norm)
+
+# %%
+model.cfg.use_attn_in
+
+# %%
+model.cfg
+
+
+
+
+
+
+
+
 
 
 # %%
@@ -196,16 +330,16 @@ imshow(pre_z, height=h)
 
 # %%
 layer = 4
-head = 11
+head = 4
 
 s_pattern = cache['pattern', layer]
 s_v = cache['v', layer]
 
-h = 300
+h = 400
 
-imshow(s_pattern[0, head], height=h)
+imshow(s_pattern[0, head], height=h, title=f"L{layer}H{head} Pattern\n (Not Corrected for Value Norm)")
 s_pre_z = einops.einsum(s_v, s_pattern, "b p_seq n_head d_head, b n_head seq p_seq -> b n_head seq p_seq d_head")[0, head].norm(dim=-1)
-imshow(s_pre_z, height=h)
+imshow(s_pre_z, height=h, title=f"L{layer}H{head} Pattern\n (Corrected for Value Norm)")
 
 
 # print(feature_act.sum())

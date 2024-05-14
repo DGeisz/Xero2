@@ -106,7 +106,7 @@ RUN_DICT = {
 # %%
 # Layer 9
 # auto_encoder_run = "gpt2-small_L9_Hcat_z_lr1.20e-03_l11.20e+00_ds24576_bs4096_dc1.00e-06_rsanthropic_rie25000_nr4_v9"
-auto_encoder_run = RUN_DICT[1]
+auto_encoder_run = RUN_DICT[9]
 encoder = AutoEncoder.load_from_hf(auto_encoder_run, hf_repo="ckkissane/attn-saes-gpt2-small-all-layers")
 
 # %%
@@ -316,6 +316,24 @@ model.cfg
 
 
 
+# %%
+_, cache = model.run_with_cache(model.to_tokens('14. Colorado 15. Missouri 16. California'))
+
+acts = get_feature_acts(cache)
+acts.nonzero().numel()
+
+values, max_features = acts.topk(
+    k=acts.nonzero().numel()
+)
+
+
+
+# %%
+model.W_V.shape
+
+# %%
+encoder.W_enc.shape
+
 
 
 
@@ -323,7 +341,8 @@ model.cfg
 # %%
 i = 0
 
-feature_i = max_features[i]
+# feature_i = max_features[i]
+feature_i = 18
 
 v = cache['v', 9]
 pattern = cache['pattern', 9]
@@ -340,6 +359,8 @@ linear_f = einops.einsum(feature_act, "n_head seq feature -> feature") - b_mod +
 
 mm = 1
 mnn = None if mm is None else -mm
+
+print(feature_act[:, :, feature_i].shape, feature_i)
 
 imshow(feature_act[:, :, feature_i], zmax=mm, zmin=mnn)
 print(linear_f[feature_i])

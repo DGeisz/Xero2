@@ -1,9 +1,6 @@
 import gzip
 import os
 import pickle
-import json
-
-from functools import partial
 
 import einops
 import torch
@@ -13,9 +10,7 @@ from torch import Tensor, nn
 from torch.distributions.categorical import Categorical
 from tqdm import tqdm
 from transformer_lens.hook_points import HookedRootModule, HookPoint
-from transformer_lens import utils
 from huggingface_hub import hf_hub_download
-from plotly_utils import *
 
 from pprint import pprint
 
